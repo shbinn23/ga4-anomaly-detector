@@ -1,10 +1,13 @@
+import logging
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from typing import List, Optional
 import pandas as pd
 from prophet import Prophet
 
-# 1. FastAPI 인스턴스 생성
+# 1. Prophet의 수다스러운 디버그 로그 차단 (서버 디스크 I/O 및 메모리 절약)
+logging.getLogger('cmdstanpy').setLevel(logging.WARNING)
+
 app = FastAPI(title="GA4 Anomaly Detection API")
 
 # --- 데이터 계약 (Data Contracts) ---
@@ -21,14 +24,12 @@ class AnomalyResponse(BaseModel):
     property_id: str
     target_date: str
     is_anomaly: bool
-    # 차트 렌더링을 위한 시계열 배열
     dates: List[str]
     actual_sessions: List[Optional[float]]
     ai_pure: List[float]
     ai_lower: List[float]
     ai_upper: List[float]
 
-# --- 서버 상태 확인 (Health Check) ---
 @app.get("/")
 def read_root():
     return {"status": "ok", "message": "GA4 Anomaly Detection API is running"}
@@ -37,42 +38,38 @@ def read_root():
 @app.post("/api/v1/analyze", response_model=AnomalyResponse)
 def analyze_traffic(payload: AnomalyRequest):
     try:
-        # 데이터 변환
-        df = pd.DataFrame([{"ds": item.date, "y": item.sessions} for item in payload.history_data])
+        # 1. Pydantic 객체를 DataFrame으로 고속 변환 (List Comprehension 활용)
+        df = pd.DataFrame([vars(item) for item in payload.history_data])
+        df.rename(columns={'date': 'ds', 'sessions': 'y'}, inplace=True)
         df['ds'] = pd.to_datetime(df['ds'])
 
-        # 타겟 일자 분리
-        target_row = df.iloc[-1]
+        # 2. 타겟 일자(마지막 날)를 제외한 학습용 데이터 분리
         train_df = df.iloc[:-1]
 
-        # Prophet 모델 학습 (신뢰구간 80%)
+        # 3. 순수 기본 Prophet 모델 학습 (80% 신뢰구간)
+        # 커스텀 계절성 없이, Prophet이 기본적으로 감지하는 트렌드와 주간(Weekly) 패턴만 사용
         model = Prophet(yearly_seasonality=False, daily_seasonality=False, interval_width=0.80)
         model.fit(train_df)
 
-        # 예측 수행
-        future = model.make_future_dataframe(periods=1)
-        forecast = model.predict(future)
+        # 4. 메모리 낭비 제거: make_future_dataframe을 쓰지 않고 원본 날짜(ds)를 그대로 재사용하여 예측
+        forecast = model.predict(df[['ds']])
 
-        # 타겟 일자 이상치 판별
-        prediction = forecast.iloc[-1]
-        is_anomaly = bool(target_row['y'] < prediction['yhat_lower'] or target_row['y'] > prediction['yhat_upper'])
+        # 5. 타겟 일자 이상치 판별 (빠른 벡터 인덱싱)
+        target_y = df['y'].iloc[-1]
+        pred_lower = forecast['yhat_lower'].iloc[-1]
+        pred_upper = forecast['yhat_upper'].iloc[-1]
+        is_anomaly = bool(target_y < pred_lower or target_y > pred_upper)
 
-        # 결과 배열 추출 (리스트 형태로 변환)
-        dates = forecast['ds'].dt.strftime('%Y-%m-%d').tolist()
-        ai_pure = forecast['yhat'].round(2).tolist()
-        ai_lower = forecast['yhat_lower'].round(2).tolist()
-        ai_upper = forecast['yhat_upper'].round(2).tolist()
-        actual_sessions = df['y'].tolist()
-
+        # 6. JSON 규격에 맞게 리스트로 추출 후 반환
         return AnomalyResponse(
             property_id=payload.property_id,
             target_date=payload.target_date,
             is_anomaly=is_anomaly,
-            dates=dates,
-            actual_sessions=actual_sessions,
-            ai_pure=ai_pure,
-            ai_lower=ai_lower,
-            ai_upper=ai_upper
+            dates=forecast['ds'].dt.strftime('%Y-%m-%d').tolist(),
+            actual_sessions=df['y'].tolist(),
+            ai_pure=forecast['yhat'].round(2).tolist(),
+            ai_lower=forecast['yhat_lower'].round(2).tolist(),
+            ai_upper=forecast['yhat_upper'].round(2).tolist()
         )
 
     except Exception as e:

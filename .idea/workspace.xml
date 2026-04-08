@@ -4,11 +4,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="abe48099-cf4e-4fe5-8b4c-75190f2324d5" name="Changes" comment="test">
-      <change afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+    <list default="true" id="abe48099-cf4e-4fe5-8b4c-75190f2324d5" name="Changes" comment="4/8">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ga4-anomaly-detector.iml" beforeDir="false" afterPath="$PROJECT_DIR$/ga4-anomaly-detector.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -117,7 +114,7 @@
       <option name="presentableId" value="Default" />
       <updated>1775582084965</updated>
       <workItem from="1775583020773" duration="1224000" />
-      <workItem from="1775608974811" duration="934000" />
+      <workItem from="1775608974811" duration="2722000" />
     </task>
     <task id="LOCAL-00001" summary="test">
       <option name="closed" value="true" />
@@ -127,7 +124,15 @@
       <option name="project" value="LOCAL" />
       <updated>1775584163263</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="4/8">
+      <option name="closed" value="true" />
+      <created>1775610068487</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1775610068487</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -135,7 +140,8 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="test" />
-    <option name="LAST_COMMIT_MESSAGE" value="test" />
+    <MESSAGE value="4/8" />
+    <option name="LAST_COMMIT_MESSAGE" value="4/8" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />
