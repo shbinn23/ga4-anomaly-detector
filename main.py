@@ -28,6 +28,11 @@ class AnomalyResponse(BaseModel):
     ai_lower: List[float]
     ai_upper: List[float]
 
+# --- 서버 상태 확인 (Health Check) ---
+@app.get("/")
+def read_root():
+    return {"status": "ok", "message": "GA4 Anomaly Detection API is running"}
+
 # --- 엔드포인트 로직 ---
 @app.post("/api/v1/analyze", response_model=AnomalyResponse)
 def analyze_traffic(payload: AnomalyRequest):
