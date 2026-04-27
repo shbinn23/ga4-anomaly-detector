@@ -24,6 +24,25 @@ class AnomalyRequest(BaseModel):
     target_date: str
     history_data: List[DailySession]
 
+# main.py 에 추가할 리셋 엔드포인트
+@app.post("/api/v1/reset")
+async def reset_database():
+    try:
+        # JSON 데이터베이스 파일 삭제
+        if os.path.exists(DB_FILE):
+            os.remove(DB_FILE)
+
+        # 정적 리포트(HTML) 파일들도 모두 삭제 (필요 시)
+        if os.path.exists(REPORT_DIR):
+            for file in os.listdir(REPORT_DIR):
+                file_path = os.path.join(REPORT_DIR, file)
+                if os.path.isfile(file_path):
+                    os.remove(file_path)
+
+        return {"status": "success", "message": "Database and reports cleared for new run."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/api/v1/analyze")
 def analyze_traffic(payload: AnomalyRequest):
     try:

@@ -37,7 +37,7 @@ def render_anomaly_chart(df, property_name):
     return fig
 
 def main():
-    st.title("🛡️ GA4 이상 탐지 집중 관제소")
+    st.title("🛡️ GA4 이상 트래픽 감지")
     data = load_data()
 
     if not data:
