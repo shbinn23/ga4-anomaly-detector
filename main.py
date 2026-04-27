@@ -1,76 +1,153 @@
+import os
+import json
 import logging
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
-from typing import List, Optional
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+from typing import List, Dict
 import pandas as pd
 from prophet import Prophet
+import plotly.graph_objects as go
 
-# 1. Prophet의 수다스러운 디버그 로그 차단 (서버 디스크 I/O 및 메모리 절약)
+# 1. 설정 및 디렉토리 관리
 logging.getLogger('cmdstanpy').setLevel(logging.WARNING)
+REPORT_DIR = "static/reports"
+DB_FILE = "results_db.json"
+os.makedirs(REPORT_DIR, exist_ok=True)
 
-app = FastAPI(title="GA4 Anomaly Detection API")
+app = FastAPI(title="GA4 Anomaly Control Center")
+app.mount("/reports", StaticFiles(directory=REPORT_DIR), name="reports")
 
-# --- 데이터 계약 (Data Contracts) ---
+# 85개 프로퍼티의 최신 상태를 저장할 인메모리 DB
+# 서버 재시작 시 데이터 유지를 위해 파일 저장 로직 포함
+if os.path.exists(DB_FILE):
+    with open(DB_FILE, "r") as f:
+        results_db = json.load(f)
+else:
+    results_db = {}
+
 class DailySession(BaseModel):
     date: str
     sessions: float
 
 class AnomalyRequest(BaseModel):
     property_id: str
+    property_name: str
     target_date: str
-    history_data: List[DailySession] = Field(..., description="과거 시계열 데이터 리스트")
+    history_data: List[DailySession]
 
-class AnomalyResponse(BaseModel):
-    property_id: str
-    target_date: str
-    is_anomaly: bool
-    dates: List[str]
-    actual_sessions: List[Optional[float]]
-    ai_pure: List[float]
-    ai_lower: List[float]
-    ai_upper: List[float]
-
-@app.get("/")
-def read_root():
-    return {"status": "ok", "message": "GA4 Anomaly Detection API is running"}
-
-# --- 엔드포인트 로직 ---
-@app.post("/api/v1/analyze", response_model=AnomalyResponse)
-def analyze_traffic(payload: AnomalyRequest):
+# --- [API] 분석 및 결과 업데이트 ---
+@app.post("/api/v1/analyze")
+async def analyze_traffic(payload: AnomalyRequest):
     try:
-        # 1. Pydantic 객체를 DataFrame으로 고속 변환 (List Comprehension 활용)
-        df = pd.DataFrame([vars(item) for item in payload.history_data])
-        df.rename(columns={'date': 'ds', 'sessions': 'y'}, inplace=True)
-        df['ds'] = pd.to_datetime(df['ds'])
+        df = pd.DataFrame([vars(d) for d in payload.history_data])
+        df['ds'] = pd.to_datetime(df['date'])
+        df = df.sort_values('ds').reset_index(drop=True)
 
-        # 2. 타겟 일자(마지막 날)를 제외한 학습용 데이터 분리
-        train_df = df.iloc[:-1]
+        # Prophet 분석
+        m = Prophet(interval_width=0.8, yearly_seasonality=False, weekly_seasonality=True, daily_seasonality=False)
+        m.fit(df[['ds', 'y']])
+        forecast = m.predict(df[['ds']])
 
-        # 3. 순수 기본 Prophet 모델 학습 (80% 신뢰구간)
-        # 커스텀 계절성 없이, Prophet이 기본적으로 감지하는 트렌드와 주간(Weekly) 패턴만 사용
-        model = Prophet(yearly_seasonality=False, daily_seasonality=False, interval_width=0.80)
-        model.fit(train_df)
+        # 이상치 판별
+        last_actual = df['y'].iloc[-1]
+        last_lower = forecast['yhat_lower'].iloc[-1]
+        last_upper = forecast['yhat_upper'].iloc[-1]
+        is_anomaly = not (last_lower <= last_actual <= last_upper)
 
-        # 4. 메모리 낭비 제거: make_future_dataframe을 쓰지 않고 원본 날짜(ds)를 그대로 재사용하여 예측
-        forecast = model.predict(df[['ds']])
+        # Plotly 리포트 생성
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=df['ds'], y=df['y'], name='Actual', mode='lines+markers'))
+        fig.add_trace(go.Scatter(x=forecast['ds'], y=forecast['yhat'], name='Predicted', line=dict(dash='dot')))
+        fig.update_layout(title=f"Trend: {payload.property_name}", template="plotly_white")
 
-        # 5. 타겟 일자 이상치 판별 (빠른 벡터 인덱싱)
-        target_y = df['y'].iloc[-1]
-        pred_lower = forecast['yhat_lower'].iloc[-1]
-        pred_upper = forecast['yhat_upper'].iloc[-1]
-        is_anomaly = bool(target_y < pred_lower or target_y > pred_upper)
+        file_name = f"{payload.property_id}_report.html"
+        fig.write_html(os.path.join(REPORT_DIR, file_name))
 
-        # 6. JSON 규격에 맞게 리스트로 추출 후 반환
-        return AnomalyResponse(
-            property_id=payload.property_id,
-            target_date=payload.target_date,
-            is_anomaly=is_anomaly,
-            dates=forecast['ds'].dt.strftime('%Y-%m-%d').tolist(),
-            actual_sessions=df['y'].tolist(),
-            ai_pure=forecast['yhat'].round(2).tolist(),
-            ai_lower=forecast['yhat_lower'].round(2).tolist(),
-            ai_upper=forecast['yhat_upper'].round(2).tolist()
-        )
+        # 데이터베이스 업데이트
+        results_db[payload.property_id] = {
+            "property_name": payload.property_name,
+            "last_sessions": int(last_actual),
+            "expected_range": f"{int(last_lower)} ~ {int(last_upper)}",
+            "is_anomaly": is_anomaly,
+            "report_url": f"/reports/{file_name}",
+            "updated_at": payload.target_date
+        }
 
+        with open(DB_FILE, "w") as f:
+            json.dump(results_db, f)
+
+        return {"status": "success", "is_anomaly": is_anomaly}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# --- [UI] 메인 관제 대시보드 ---
+@app.get("/", response_class=HTMLResponse)
+async def dashboard():
+    df_results = pd.DataFrame.from_dict(results_db, orient='index')
+
+    if df_results.empty:
+        return "<html><body><h1>No data yet. Run n8n workflow.</h1></body></html>"
+
+    # 이상치 개수 계산
+    anomaly_count = df_results['is_anomaly'].sum()
+    total_count = len(df_results)
+
+    # HTML 템플릿 (Bootstrap 기반)
+    rows = ""
+    for pid, res in results_db.items():
+        status_badge = '<span style="color:red; font-weight:bold;">⚠️ ANOMALY</span>' if res['is_anomaly'] else '<span style="color:green;">✅ NORMAL</span>'
+        rows += f"""
+        <tr>
+            <td>{res['property_name']}</td>
+            <td>{res['last_sessions']:,}</td>
+            <td>{res['expected_range']}</td>
+            <td>{status_badge}</td>
+            <td><a href="{res['report_url']}" target="_blank" style="text-decoration:none; color:#007bff;">View Report</a></td>
+            <td><small>{res['updated_at']}</small></td>
+        </tr>
+        """
+
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>GA4 Control Center</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+        <style>
+            body {{ background-color: #f8f9fa; padding: 20px; }}
+            .card {{ border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }}
+            .table {{ background: white; border-radius: 10px; overflow: hidden; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>📊 GA4 Anomaly Detection Dashboard</h1>
+                <div class="text-end">
+                    <span class="badge bg-danger fs-5">Anomalies: {anomaly_count}</span>
+                    <span class="badge bg-primary fs-5">Total: {total_count}</span>
+                </div>
+            </div>
+            <div class="card p-3">
+                <table class="table table-hover mt-3">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Property Name</th>
+                            <th>Latest Sessions</th>
+                            <th>Expected Range (80%)</th>
+                            <th>Status</th>
+                            <th>Analysis</th>
+                            <th>Target Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {rows}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
