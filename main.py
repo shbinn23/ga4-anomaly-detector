@@ -1,47 +1,53 @@
-import logging
 import os
 import json
+import logging
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
-from typing import List, Optional
+from pydantic import BaseModel
+from typing import List
 import pandas as pd
 from prophet import Prophet
 
-# 1. 경로 설정 (절대 경로를 사용하여 논리적 오류 방지)
+# --- [교정] 경로 변수 정의 (이 부분이 누락되어 에러가 발생한 것입니다) ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_FILE = os.path.join(BASE_DIR, "results_db.json")
+REPORT_DIR = os.path.join(BASE_DIR, "static/reports") # <--- 에러의 원인!
+
+# 디렉토리가 없을 경우를 대비해 자동 생성 로직 추가
+os.makedirs(REPORT_DIR, exist_ok=True)
 
 logging.getLogger('cmdstanpy').setLevel(logging.WARNING)
 app = FastAPI(title="GA4 Anomaly Detection API")
 
+# --- 기존 데이터 계약 및 모델 로직 ---
 class DailySession(BaseModel):
     date: str
     sessions: float
 
 class AnomalyRequest(BaseModel):
     property_id: str
-    property_name: str  # 대시보드 표시를 위해 필수 추가
+    property_name: str
     target_date: str
     history_data: List[DailySession]
 
-# main.py 에 추가할 리셋 엔드포인트
+# --- [수정 완료] 리셋 엔드포인트 ---
 @app.post("/api/v1/reset")
 async def reset_database():
     try:
-        # JSON 데이터베이스 파일 삭제
+        # 1. 데이터베이스 파일 삭제
         if os.path.exists(DB_FILE):
             os.remove(DB_FILE)
 
-        # 정적 리포트(HTML) 파일들도 모두 삭제 (필요 시)
+        # 2. 리포트 폴더 내 HTML 파일 청소 (REPORT_DIR 정의 확인됨)
         if os.path.exists(REPORT_DIR):
             for file in os.listdir(REPORT_DIR):
                 file_path = os.path.join(REPORT_DIR, file)
                 if os.path.isfile(file_path):
                     os.remove(file_path)
 
-        return {"status": "success", "message": "Database and reports cleared for new run."}
+        return {"status": "success", "message": "Database and reports cleared."}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # 에러 발생 시 상세 내용을 반환하도록 수정
+        raise HTTPException(status_code=500, detail=f"Reset failed: {str(e)}")
 
 @app.post("/api/v1/analyze")
 def analyze_traffic(payload: AnomalyRequest):
