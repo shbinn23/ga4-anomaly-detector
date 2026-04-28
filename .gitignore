@@ -1,14 +1,21 @@
-# Environments
-.env
+# 가상환경 (가장 중요)
 .venv/
 venv/
-ENV/
+env/
 
-# Python Cache
+# 파이썬 캐시
 __pycache__/
 *.py[cod]
-*$py.class
 
-# IDE (IntelliJ) & OS Files
+# 로컬 데이터 (데이터와 코드의 분리)
+data/*.json
+!data/.gitkeep
+
+# 환경 설정 및 비밀번호
+.env
 .idea/
+.vscode/
+
+# 운영체제 관련
 .DS_Store
+Thumbs.db
