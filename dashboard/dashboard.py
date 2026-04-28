@@ -7,7 +7,7 @@ from components.charts import render_anomaly_chart
 st.set_page_config(page_title="GA4 AI Control Center", layout="wide")
 
 def main():
-    st.title("🛡️ GA4 FORTRESS 센터")
+    st.title("🛡️ Google Analytics AI Monitoring Dashboard")
 
     # 1. 데이터 로드 및 필터링
     all_data = load_anomaly_data()
@@ -19,8 +19,8 @@ def main():
 
     # 2. 상단 헤더 지표
     c1, c2, c3 = st.columns(3)
-    c1.metric("총 모니터링 프로퍼티", f"{len(all_data)}개")
-    c2.metric("위험 탐지 프로퍼티", f"{len(anomalies)}건", delta=len(anomalies), delta_color="inverse")
+    c1.metric("총 모니터링 Property", f"{len(all_data)}개")
+    c2.metric("위험 탐지 Property", f"{len(anomalies)}건", delta=len(anomalies), delta_color="inverse")
     c3.metric("최종 업데이트", datetime.now().strftime("%H:%M"))
 
     st.markdown("---")
@@ -42,7 +42,7 @@ def main():
                         st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
                         st.caption(f"ID: {prop_id} | 실제 세션: {res['last_sessions']:,}")
     else:
-        st.success("✅ 현재 모든 프로퍼티가 정상 범위를 유지하고 있습니다.")
+        st.success("✅ 현재 모든 Property가 정상 범위를 유지하고 있습니다.")
 
 if __name__ == "__main__":
     main()
