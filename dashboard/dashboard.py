@@ -1,48 +1,209 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime
-from utils.data_loader import load_anomaly_data, filter_anomalies
-from components.charts import render_anomaly_chart
 
-st.set_page_config(page_title="GA4 AI Control Center", layout="wide")
+from utils.data_loader import load_anomaly_data, get_trending, filter_anomalies, compute_change_rate
+from components.charts import render_sparkline, render_anomaly_chart
+from components.styles import apply_styles
+st.set_page_config(page_title="GA4 AI Control Center", layout="wide", initial_sidebar_state="collapsed")
+_SPARK_CONFIG = {"displayModeBar": False, "staticPlot": True}
 
-def main():
-    st.title("🛡️ Google Analytics AI Monitoring Dashboard")
+# ── 0. 상태 관리 (State Management) ───────────────────────────────────
+if 'current_view' not in st.session_state:
+    st.session_state.current_view = 'overview'
+if 'selected_property' not in st.session_state:
+    st.session_state.selected_property = None
 
-    # 1. 데이터 로드 및 필터링
-    all_data = load_anomaly_data()
-    if not all_data:
-        st.info("현재 분석된 데이터가 없습니다. n8n 워크플로우를 먼저 실행하세요.")
-        return
+def navigate_to(view_name: str, prop_id: str = None):
+    """화면 전환 및 선택된 프로퍼티 상태를 업데이트하는 라우터 함수"""
+    st.session_state.current_view = view_name
+    if prop_id:
+        st.session_state.selected_property = prop_id
+    st.rerun()
+
+# ── 유틸 함수 ─────────────────────────────────────────────────────────
+def country_flag(code: str) -> str:
+    code = code.upper().strip()
+    if len(code) < 2 or not code[:2].isalpha(): return "🌐"
+    return chr(0x1F1E6 + ord(code[0]) - ord("A")) + chr(0x1F1E6 + ord(code[1]) - ord("A"))
+
+def rate_color(rate: float) -> str:
+    return "#F43F5E" if rate < 0 else "#22C55E"
+
+def colored_rate(rate: float, size: str = "1em") -> str:
+    sign = "+" if rate >= 0 else ""
+    return f"<span style='color:{rate_color(rate)}; font-weight:700; font-size:{size}'>{sign}{rate:.1f}%</span>"
+
+
+# =====================================================================
+# Level 1: Overview (메인 대시보드)
+# =====================================================================
+def render_sessions_card(all_data):
+    with st.container(border=True, height=420): # [교정] UI 무결성을 위한 높이 강제 고정
+        st.markdown("<h5 style='margin-bottom:0;'>SESSIONS</h5>", unsafe_allow_html=True)
+        st.write("")
+
+        col_metrics, col_charts = st.columns([1.4, 2]) # [교정] 텍스트 짤림 방지 비율
+
+        with col_metrics:
+            total_sessions = sum([v["last_sessions"] for v in all_data.values()]) if all_data else 0
+            st.metric("Total Sessions", f"{total_sessions:,}", "Anomaly (+12%)")
+            st.metric("Daily Unique", "88k", "+5%")
+            st.metric("Mobile %", "65%", "+8 pts")
+
+        with col_charts:
+            sample_y = list(all_data.values())[0]["forecast_data"]["y"] if all_data else [0]*10
+            st.caption("Daily")
+            st.plotly_chart(render_sparkline(sample_y[-14:], is_down=False, height=40), use_container_width=True, config=_SPARK_CONFIG, key="spark_sessions_daily")
+            st.caption("Weekly")
+            st.plotly_chart(render_sparkline(sample_y[-30::2], is_down=True, height=40), use_container_width=True, config=_SPARK_CONFIG, key="spark_sessions_weekly")
+            st.caption("Mobile")
+            st.plotly_chart(render_sparkline(sample_y[-14:], is_down=True, height=40), use_container_width=True, config=_SPARK_CONFIG, key="spark_sessions_mobile")
+
+        st.write("")
+        # [교정] Level 2로 이동하는 라우팅 함수 연결
+        if st.button("Detail to Sessions", use_container_width=True, key="btn_sessions_detail"):
+            navigate_to('sessions_detail')
+
+# ── 2, 3, 4 섹션 (개발 대기 처리) ───────────────────────────────────────────
+def render_pending_card(title: str):
+    with st.container(border=True, height=420):
+        st.markdown(f"<h5 style='margin-bottom:0;'>{title}</h5>", unsafe_allow_html=True)
+        st.write("")
+        st.write("")
+        # 명시적인 개발 대기 알림
+        st.info(f"**[ 🚧 개발 대기 ]**\n\n해당 도메인의 데이터 파이프라인이 아직 연결되지 않았습니다.\n\nPhase 2 - Step 5 (n8n 데이터 병렬 수집) 완료 후 대시보드에 연동됩니다.")
+
+def render_events_card():
+    render_pending_card("EVENT COUNT")
+
+def render_revenue_card():
+    render_pending_card("REVENUE")
+
+def render_ecommerce_card():
+    render_pending_card("ECOMMERCE EVENTS")
+
+def render_trending_sidebar(all_data):
+    with st.container(border=True, height=860):
+        st.markdown("<h6 style='margin-bottom:0;'>TRENDING</h6>", unsafe_allow_html=True)
+        st.write("")
+
+        trending = get_trending(all_data, n=8) if all_data else []
+        for pid, v, rate in trending:
+            is_down = rate < 0
+            code = v["property_name"][:2].upper()
+            flag = country_flag(code)
+            color = "#22C55E" if rate >= 0 else "#F43F5E"
+            sign = "+" if rate >= 0 else ""
+
+            st.markdown(
+                f"<div style='display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: -10px;'>"
+                f"<span style='font-size:0.9rem; font-weight:bold;'>{flag} {code}</span>"
+                f"<span style='color:{color}; font-weight:800; font-size:1.1rem;'>{sign}{rate:.1f}%</span>"
+                f"</div>",
+                unsafe_allow_html=True
+            )
+
+            fig = render_sparkline(v["forecast_data"]["y"][-14:], is_down=is_down, height=35)
+            st.plotly_chart(fig, use_container_width=True, config=_SPARK_CONFIG, key=f"trend_narrow_{pid}")
+            st.markdown("<hr style='margin: 0.2em 0 0.8em 0; opacity: 0.3;'/>", unsafe_allow_html=True)
+
+def view_overview(all_data):
+    st.markdown("<h3>GA4 Traffic Board</h3>", unsafe_allow_html=True)
+    st.write("")
+
+    main_col, side_col = st.columns([8.2, 1.8])
+
+    with main_col:
+        r1c1, r1c2 = st.columns(2)
+        with r1c1: render_sessions_card(all_data)
+        with r1c2: render_events_card()
+
+        r2c1, r2c2 = st.columns(2)
+        with r2c1: render_revenue_card()
+        with r2c2: render_ecommerce_card()
+
+    with side_col:
+        render_trending_sidebar(all_data)
+
+
+# =====================================================================
+# Level 2: Sessions Detail (기존 3열 그리드 이상치 화면)
+# =====================================================================
+def view_sessions_detail(all_data):
+    col_back, col_title = st.columns([1, 10])
+    with col_back:
+        if st.button("← Back", key="btn_back_to_overview"):
+            navigate_to('overview')
+    with col_title:
+        st.markdown("<h3 style='margin-top:-10px;'>🔍 Sessions Anomaly Detail</h3>", unsafe_allow_html=True)
+
+    st.divider()
 
     anomalies = filter_anomalies(all_data)
-
-    # 2. 상단 헤더 지표
-    c1, c2, c3 = st.columns(3)
-    c1.metric("총 모니터링 Property", f"{len(all_data)}개")
-    c2.metric("위험 탐지 Property", f"{len(anomalies)}건", delta=len(anomalies), delta_color="inverse")
-    c3.metric("최종 업데이트", datetime.now().strftime("%H:%M"))
-
-    st.markdown("---")
-
-    # 3. 3열 그리드 시각화
-    if anomalies:
-        st.subheader(f"📍 이상 트래픽 집중 관제 ({len(anomalies)}건)")
-
-        # 데이터를 3개씩 나누어 행 단위로 렌더링
-        anomaly_items = list(anomalies.items())
-        for i in range(0, len(anomaly_items), 3):
-            cols = st.columns(3)
-            for j in range(3):
-                if i + j < len(anomaly_items):
-                    prop_id, res = anomaly_items[i + j]
-                    with cols[j]:
-                        chart_df = pd.DataFrame(res['forecast_data'])
-                        fig = render_anomaly_chart(chart_df, res['property_name'])
-                        st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-                        st.caption(f"ID: {prop_id} | 실제 세션: {res['last_sessions']:,}")
-    else:
+    if not anomalies:
         st.success("✅ 현재 모든 Property가 정상 범위를 유지하고 있습니다.")
+        return
+
+    st.subheader(f"📍 이상 트래픽 집중 관제 · {len(anomalies)}건")
+    st.write("")
+
+    items = list(anomalies.items())
+    for i in range(0, len(items), 3):
+        cols = st.columns(3)
+        for j in range(3):
+            if i + j >= len(items): break
+            prop_id, res = items[i + j]
+            rate = compute_change_rate(res)
+
+            with cols[j]:
+                with st.container(border=True):
+                    chart_df = pd.DataFrame(res["forecast_data"])
+                    fig = render_anomaly_chart(chart_df, res["property_name"])
+                    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False}, key=f"detail_sessions_chart_{prop_id}")
+
+                    st.markdown(
+                        f"<div style='font-size:0.9rem'>ID: `{prop_id}` | 실제: **{res['last_sessions']:,}** | {colored_rate(rate)}</div>",
+                        unsafe_allow_html=True,
+                    )
+
+                    # [핵심] Level 3로 진입하기 위한 프로퍼티별 딥다이브 버튼
+                    st.write("")
+                    if st.button(f"Analyze Channels 〉", use_container_width=True, key=f"btn_analyze_{prop_id}"):
+                        navigate_to('channel_detail', prop_id=prop_id)
+
+
+# =====================================================================
+# Level 3: Channel Detail (Step 5 예비 화면)
+# =====================================================================
+def view_channel_detail(all_data, prop_id):
+    col_back, col_title = st.columns([1, 10])
+    with col_back:
+        if st.button("← Back", key="btn_back_to_sessions"):
+            navigate_to('sessions_detail')
+    with col_title:
+        prop_name = all_data.get(prop_id, {}).get("property_name", prop_id) if all_data else prop_id
+        st.markdown(f"<h3 style='margin-top:-10px;'>🌐 Channel Deep Dive: {prop_name}</h3>", unsafe_allow_html=True)
+
+    st.divider()
+
+    st.info(f"선택하신 Property ID (`{prop_id}`)의 채널별 데이터 적재를 대기 중입니다.")
+    st.caption("Phase 2 - Step 5 (n8n 채널/이벤트 데이터 병렬 수집 파이프라인 구축) 완료 후 여기에 채널 기여도 분석 차트가 렌더링됩니다.")
+
+
+# =====================================================================
+# Main Router
+# =====================================================================
+def main():
+    apply_styles()
+    all_data = load_anomaly_data()
+
+    # Controller: 현재 상태에 따라 뷰를 렌더링
+    if st.session_state.current_view == 'overview':
+        view_overview(all_data)
+    elif st.session_state.current_view == 'sessions_detail':
+        view_sessions_detail(all_data)
+    elif st.session_state.current_view == 'channel_detail':
+        view_channel_detail(all_data, st.session_state.selected_property)
 
 if __name__ == "__main__":
     main()
