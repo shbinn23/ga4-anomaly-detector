@@ -138,4 +138,9 @@ class AnomalyService:
         if analysis_results:
             self.storage.save_all_channel_analysis(analysis_results)
 
-        return {"status": "success", "processed_properties": processed_count}
+        # 🔥 [수정] 결과를 반환값에 포함시켰습니다.
+        return {
+            "status": "success",
+            "processed_properties": processed_count,
+            "results": analysis_results
+        }
