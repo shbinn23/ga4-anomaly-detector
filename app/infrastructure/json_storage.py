@@ -37,6 +37,19 @@ class JSONStorage(BaseStorage):
             logger.error(f"JSON 로드 실패: {str(e)}")
             return {}
 
+    def save_batch(self, data_map: dict):
+        """여러 프로퍼티의 분석 결과를 한 번의 I/O로 영속화합니다."""
+        try:
+            db = self.load_all()
+            db.update(data_map)
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            with open(self.path, "w", encoding="utf-8") as f:
+                json.dump(db, f, ensure_ascii=False, indent=4)
+            logger.info(f"Successfully saved batch update for {len(data_map)} properties.")
+        except Exception as e:
+            logger.error(f"JSON 배치 저장 실패: {str(e)}")
+            raise InfrastructureError(f"Batch storage failed: {str(e)}")
+
     def clear(self):
         try:
             if self.path.exists():

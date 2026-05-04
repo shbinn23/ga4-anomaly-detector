@@ -18,6 +18,11 @@ class ForecastData(BaseModel):
     yhat_lower: List[float]
     yhat_upper: List[float]
 
+class BatchAnomalyRequest(BaseModel):
+    """n8n에서 보내는 10개 단위 배치 요청을 수용합니다."""
+    batch_size: int
+    properties: List[AnomalyRequest]
+
 class AnalysisResult(BaseModel):
     property_name: str
     is_anomaly: bool
