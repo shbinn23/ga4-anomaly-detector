@@ -1,7 +1,7 @@
 import pandas as pd
 import logging
 from typing import Dict, Any
-from ..domain.schemas import AnomalyRequest, BatchAnomalyRequest, AnalysisResult, ForecastData
+from ..domain.schemas import AnomalyRequest, BatchAnomalyRequest, AnalysisResult, ForecastData, ChannelUpdateTask
 from ..ml.base_detector import BaseDetector
 from ..infrastructure.json_storage import JSONStorage
 
@@ -74,4 +74,54 @@ class AnomalyService:
             }
         except Exception as e:
             logger.error(f"배치 분석 중 오류: {str(e)}")
+            raise
+
+    def run_channel_analysis(self, payload: ChannelUpdateTask) -> Dict[str, Any]:
+        """
+        n8n으로부터 수신된 채널 데이터를 개별 Prophet 모델로 분석합니다.[cite: 12]
+        결과는 channel_anomaly_db.json에 저장됩니다.
+        """
+        try:
+            analysis_results = {}
+            for prop in payload.data:
+                prop_id = prop.property_id
+                prop_channels = {}
+
+                # 각 채널별로 독립적인 AI 분석 수행
+                for channel_name, history in prop.grouped_channels.items():
+                    # 데이터프레임 변환 및 전처리[cite: 6, 12]
+                    df = pd.DataFrame([h.dict() for h in history])
+                    df.rename(columns={'date': 'ds', 'sessions': 'y'}, inplace=True)
+                    df['ds'] = pd.to_datetime(df['ds'])
+
+                    # Prophet 학습 및 시계열 예측 실행[cite: 7, 9]
+                    forecast = self.detector.train_and_predict(df)
+
+                    # 마지막 날짜 기준 이상치 판별[cite: 9]
+                    is_anomaly = self.detector.check_anomaly(
+                        actual=df['y'].iloc[-1],
+                        lower=forecast['yhat_lower'].iloc[-1],
+                        upper=forecast['yhat_upper'].iloc[-1]
+                    )
+
+                    # 채널별 분석 결과 스택 구성[cite: 12, 23]
+                    prop_channels[channel_name] = {
+                        "is_anomaly": is_anomaly,
+                        "last_sessions": int(df['y'].iloc[-1]),
+                        "forecast_data": {
+                            "ds": forecast['ds'].dt.strftime('%Y-%m-%d').tolist(),
+                            "y": df['y'].tolist(),
+                            "yhat": forecast['yhat'].round(2).tolist(),
+                            "yhat_lower": forecast['yhat_lower'].round(2).tolist(),
+                            "yhat_upper": forecast['yhat_upper'].round(2).tolist()
+                        }
+                    }
+                analysis_results[prop_id] = prop_channels
+
+            # JSONStorage를 통해 파일로 영속화
+            self.storage.save_all_channel_analysis(analysis_results)
+            return {"status": "success", "processed_properties": len(analysis_results)}
+
+        except Exception as e:
+            logger.error(f"채널 분석 처리 중 오류 발생: {str(e)}")
             raise
