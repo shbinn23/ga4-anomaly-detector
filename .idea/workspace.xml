@@ -4,7 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="abe48099-cf4e-4fe5-8b4c-75190f2324d5" name="Changes" comment="4/8" />
+    <list default="true" id="abe48099-cf4e-4fe5-8b4c-75190f2324d5" name="Changes" comment="4/8">
+      <change beforePath="$PROJECT_DIR$/app/services/anomaly_service.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/services/anomaly_service.py" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />

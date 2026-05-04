@@ -49,7 +49,12 @@ class AnomalyService:
         try:
             result = self._analyze_single(payload)
             self.storage.save(payload.property_id, result.dict())
-            return {"status": "success", "is_anomaly": result.is_anomaly}
+
+            # 🔥 [수정] 껍데기만 보내던 것을 전체 분석 결과 반환으로 변경
+            return {
+                "status": "success",
+                "result": result.dict()
+            }
         except Exception as e:
             logger.error(f"단일 분석 중 오류: {str(e)}")
             raise
