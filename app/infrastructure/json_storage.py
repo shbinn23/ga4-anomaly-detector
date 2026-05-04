@@ -59,12 +59,25 @@ class JSONStorage(BaseStorage):
             raise InfrastructureError(f"Clear failed: {str(e)}")
 
     def save_all_channel_analysis(self, data: dict):
+        """채널 분석 결과를 기존 데이터에 병합하여 영속화합니다."""
         path = self.path.parent / "channel_anomaly_db.json"
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
+
+            # 1. 기존 데이터 로드 (파일이 없으면 빈 딕셔너리로 초기화)
+            db = {}
+            if path.exists():
+                with open(path, "r", encoding="utf-8") as f:
+                    db = json.load(f)
+
+            # 2. 새로운 데이터 병합 (Update)
+            db.update(data)
+
+            # 3. 전체 데이터 다시 덮어쓰기 (이제 기존 데이터가 날아가지 않음)
             with open(path, "w", encoding="utf-8") as f:
-                json.dump(data, f, ensure_ascii=False, indent=4)
-            logger.info(f"Successfully saved channel analysis for {len(data)} properties.")
+                json.dump(db, f, ensure_ascii=False, indent=4)
+
+            logger.info(f"Successfully updated channel analysis. Total properties in DB: {len(db)}")
         except Exception as e:
             logger.error(f"채널 분석 저장 실패: {str(e)}")
             raise InfrastructureError(f"Channel analysis storage failed: {str(e)}")
