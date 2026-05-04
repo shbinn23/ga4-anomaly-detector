@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends
-from ...domain.schemas import AnomalyRequest, BatchAnomalyRequest
+from ...domain.schemas import AnomalyRequest, BatchAnomalyRequest, ChannelUpdateTask
 from ...services.anomaly_service import AnomalyService
 from ...core.dependencies import get_anomaly_service
 
+# 라우터 인스턴스는 파일 내에서 단 한 번만 생성합니다.
 router = APIRouter()
 
 @router.post("/analyze")
@@ -19,24 +20,10 @@ async def analyze_batch(
 ):
     return service.run_batch_analysis(payload)
 
-# app/api/routers/analyze.py 수정[cite: 16]
-
-from fastapi import APIRouter, Depends
-# ChannelUpdateTask 임포트 추가 필수
-from ...domain.schemas import AnomalyRequest, BatchAnomalyRequest, ChannelUpdateTask
-from ...services.anomaly_service import AnomalyService
-from ...core.dependencies import get_anomaly_service
-
-router = APIRouter()
-
-# ... 기존 analyze, analyze_batch 코드 유지[cite: 16] ...
-
 @router.post("/update-channels")
 async def update_channels(
         payload: ChannelUpdateTask,
         service: AnomalyService = Depends(get_anomaly_service)
 ):
-    """
-    n8n의 채널 분석 데이터를 수신하는 엔드포인트입니다.[cite: 12, 23]
-    """
+    """n8n 하단 브랜치로부터 채널별 데이터를 수신하여 AI 분석을 수행합니다."""
     return service.run_channel_analysis(payload)

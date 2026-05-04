@@ -6,7 +6,7 @@
   <component name="ChangeListManager">
     <list default="true" id="abe48099-cf4e-4fe5-8b4c-75190f2324d5" name="Changes" comment="4/8">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/services/anomaly_service.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/services/anomaly_service.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/routers/analyze.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/routers/analyze.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -193,7 +193,7 @@
       <workItem from="1777551569012" duration="2016000" />
       <workItem from="1777560894625" duration="6000" />
       <workItem from="1777739105366" duration="543000" />
-      <workItem from="1777868051157" duration="14080000" />
+      <workItem from="1777868051157" duration="14860000" />
     </task>
     <task id="LOCAL-00001" summary="test">
       <option name="closed" value="true" />
