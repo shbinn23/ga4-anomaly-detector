@@ -1,5 +1,4 @@
-# app/ml/prophet_detector.py
-import pandas as pd  # <--- 이 줄이 누락되어 NameError가 발생했습니다.
+import pandas as pd
 from prophet import Prophet
 from .base_detector import BaseDetector
 from ..core.config import settings

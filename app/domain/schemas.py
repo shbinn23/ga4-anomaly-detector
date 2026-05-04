@@ -29,3 +29,18 @@ class AnalysisResult(BaseModel):
     last_sessions: int
     updated_at: str
     forecast_data: ForecastData
+
+class ChannelData(BaseModel):
+    date: str
+    sessions: float  # Prophet 연산을 위해 float 권장
+
+class ChannelPropertyRequest(BaseModel):
+    property_id: str
+    property_name: str
+    # n8n에서 { "Organic Search": [...], "Direct": [...] } 형태로 보낼 경우
+    grouped_channels: Dict[str, List[ChannelData]]
+
+class ChannelUpdateTask(BaseModel):
+    """n8n 수신 최상위 페이로드"""
+    total_count: int
+    data: List[ChannelPropertyRequest]

@@ -8,7 +8,7 @@ from ..domain.exceptions import InfrastructureError
 logger = logging.getLogger(__name__)
 
 class JSONStorage(BaseStorage):
-    """BaseStorage 인터페이스의 JSON 파일 구현체입니다. [cite: 2026-02-26]"""
+    """BaseStorage 인터페이스의 JSON 파일 구현체입니다."""
 
     def __init__(self):
         # settings.DATA_DIR를 사용하여 루트의 /data 폴더를 참조합니다.
@@ -57,3 +57,14 @@ class JSONStorage(BaseStorage):
                 logger.info("Database file cleared.")
         except Exception as e:
             raise InfrastructureError(f"Clear failed: {str(e)}")
+
+    def save_all_channel_analysis(self, data: dict):
+        path = self.path.parent / "channel_anomaly_db.json"
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=4)
+            logger.info(f"Successfully saved channel analysis for {len(data)} properties.")
+        except Exception as e:
+            logger.error(f"채널 분석 저장 실패: {str(e)}")
+            raise InfrastructureError(f"Channel analysis storage failed: {str(e)}")

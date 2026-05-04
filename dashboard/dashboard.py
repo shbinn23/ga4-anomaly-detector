@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import json
 
 from utils.data_loader import load_anomaly_data, get_trending, filter_anomalies, compute_change_rate
 from components.charts import render_sparkline, render_anomaly_chart
@@ -173,21 +174,90 @@ def view_sessions_detail(all_data):
 
 
 # =====================================================================
-# Level 3: Channel Detail (Step 5 예비 화면)
+# Level 3: Channel Detail (AI Anomaly Deep-Dive)
 # =====================================================================
 def view_channel_detail(all_data, prop_id):
+    """
+    특정 프로퍼티의 채널별 Prophet 분석 결과를 상세 렌더링합니다.
+    이상 징후가 발견된 채널을 우선적으로 노출합니다.
+    """
+    # ── 1. 상단 내비게이션 및 헤더 ──────────────────────────────────────
     col_back, col_title = st.columns([1, 10])
+
     with col_back:
+        # 세션 상세 화면으로 돌아가는 버튼
         if st.button("← Back", key="btn_back_to_sessions"):
             navigate_to('sessions_detail')
+
     with col_title:
-        prop_name = all_data.get(prop_id, {}).get("property_name", prop_id) if all_data else prop_id
-        st.markdown(f"<h3 style='margin-top:-10px;'>🌐 Channel Deep Dive: {prop_name}</h3>", unsafe_allow_html=True)
+        prop_info = all_data.get(prop_id, {})
+        prop_name = prop_info.get("property_name", prop_id)
+        st.markdown(f"<h3 style='margin-top:-10px;'>🌐 Channel AI Insight: {prop_name}</h3>", unsafe_allow_html=True)
 
     st.divider()
 
-    st.info(f"선택하신 Property ID (`{prop_id}`)의 채널별 데이터 적재를 대기 중입니다.")
-    st.caption("Phase 2 - Step 5 (n8n 채널/이벤트 데이터 병렬 수집 파이프라인 구축) 완료 후 여기에 채널 기여도 분석 차트가 렌더링됩니다.")
+    # ── 2. 데이터 로드 (AI 분석 결과) ──────────────────────────────────
+    try:
+        with open('data/channel_anomaly_db.json', 'r') as f:
+            db = json.load(f)
+
+        # 현재 선택된 프로퍼티의 채널 분석 데이터 추출
+        prop_analysis = db.get(prop_id, {})
+
+        if not prop_analysis:
+            st.info(f"선택하신 ID(`{prop_id}`)에 대한 채널별 AI 분석 데이터가 아직 적재되지 않았습니다.")
+            st.caption("Phase 2 - Step 5 파이프라인 실행 후 데이터가 나타납니다.")
+            return
+
+        # ── 3. 채널 필터링 (이상 vs 정상) ───────────────────────────────
+        anomalous_channels = {k: v for k, v in prop_analysis.items() if v.get("is_anomaly")}
+        normal_channels = {k: v for k, v in prop_analysis.items() if not v.get("is_anomaly")}
+
+        # ── 4. 이상 징후 채널 섹션 (우선 노출) ───────────────────────────
+        st.subheader(f"🚨 Detected Anomalies ({len(anomalous_channels)})")
+
+        if anomalous_channels:
+            ch_names = list(anomalous_channels.keys())
+            for i in range(0, len(ch_names), 2):
+                cols = st.columns(2)
+                for j in range(2):
+                    if i + j >= len(ch_names): break
+                    name = ch_names[i + j]
+                    res = anomalous_channels[name]
+
+                    with cols[j]:
+                        with st.container(border=True):
+                            chart_df = pd.DataFrame(res["forecast_data"])
+                            fig = render_anomaly_chart(chart_df, f"Channel: {name}")
+                            st.plotly_chart(fig, use_container_width=True, key=f"ch_anom_{prop_id}_{name}")
+
+                            st.error(f"⚠️ {name} 채널 이상 징후 감지")
+                            st.caption(f"최종 세션: {res.get('last_sessions', 0):,}")
+        else:
+            st.success("✅ 모든 채널이 AI 예측 범위 내에서 안정적으로 작동하고 있습니다.")
+
+        # ── 5. 정상 채널 섹션 (참조용 익스팬더) ──────────────────────────
+        if normal_channels:
+            st.write("")
+            with st.expander("🔍 View Normal Channels (Reference)"):
+                norm_names = list(normal_channels.keys())
+                for i in range(0, len(norm_names), 2):
+                    cols = st.columns(2)
+                    for j in range(2):
+                        if i + j >= len(norm_names): break
+                        name = norm_names[i + j]
+                        res = normal_channels[name]
+
+                        with cols[j]:
+                            chart_df = pd.DataFrame(res["forecast_data"])
+                            fig = render_anomaly_chart(chart_df, f"Normal: {name}")
+                            st.plotly_chart(fig, use_container_width=True, key=f"ch_norm_{prop_id}_{name}")
+                            st.caption(f"✓ {name} 정상")
+
+    except FileNotFoundError:
+        st.error("`data/channel_anomaly_db.json` 파일을 찾을 수 없습니다. 백엔드 적재 프로세스를 확인하세요.")
+    except Exception as e:
+        st.error(f"데이터 렌더링 중 오류 발생: {str(e)}")
 
 
 # =====================================================================

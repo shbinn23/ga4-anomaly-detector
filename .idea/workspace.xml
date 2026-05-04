@@ -5,37 +5,16 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="abe48099-cf4e-4fe5-8b4c-75190f2324d5" name="Changes" comment="4/8">
-      <change afterPath="$PROJECT_DIR$/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/api/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/api/routers/analyze.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/api/routers/management.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/core/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/core/config.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/core/dependencies.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/core/logging.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/domain/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/domain/exceptions.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/domain/models.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/domain/schemas.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/infrastructure/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/infrastructure/json_storage.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/infrastructure/storage.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/main.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/ml/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/ml/base_detector.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/ml/detector_factory.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/ml/prophet_detector.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/services/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/services/anomaly_service.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/dashboard/components/charts.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/dashboard/dashboard.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/dashboard/utils/data_loader.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/tests/unit/test_prophet_detector.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/dashboard.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/dependencies.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/dependencies.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/domain/schemas.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/domain/schemas.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/infrastructure/json_storage.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/infrastructure/json_storage.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/infrastructure/storage.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/infrastructure/storage.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/ml/prophet_detector.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/ml/prophet_detector.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/services/anomaly_service.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/services/anomaly_service.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dashboard/dashboard.py" beforeDir="false" afterPath="$PROJECT_DIR$/dashboard/dashboard.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ga4-anomaly-detector.iml" beforeDir="false" afterPath="$PROJECT_DIR$/ga4-anomaly-detector.iml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -61,7 +40,7 @@
   <component name="GithubPullRequestsUISettings">{
   &quot;selectedUrlAndAccountId&quot;: {
     &quot;url&quot;: &quot;https://github.com/shbinn23/ga4-anomaly-detector.git&quot;,
-    &quot;accountId&quot;: &quot;f77c26ea-2e78-48dc-ab6b-680d8862ba4a&quot;
+    &quot;accountId&quot;: &quot;2f4f58a9-1179-40e6-ac1a-d4d7752f7b00&quot;
   }
 }</component>
   <component name="ProjectColorInfo">{
@@ -86,13 +65,13 @@
     "codeWithMe.voiceChat.enabledByDefault": "false",
     "git-widget-placeholder": "main",
     "kotlin-language-version-configured": "true",
-    "last_opened_file_path": "C:/develop/git/ga4-anomaly-detector",
+    "last_opened_file_path": "/Users/shbinn/dev/ga4-anomaly-detector/data",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
-    "project.structure.last.edited": "SDKs",
+    "project.structure.last.edited": "Project",
     "project.structure.proportion": "0.15",
     "project.structure.side.proportion": "0.3321839",
     "settings.editor.selected.configurable": "preferences.pluginManager",
@@ -101,17 +80,17 @@
 }]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/data" />
       <recent name="C:\develop\git\ga4-anomaly-detector" />
       <recent name="C:\develop\git\ga4-anomaly-detector\app\services" />
       <recent name="C:\develop\git\ga4-anomaly-detector\app\ml" />
       <recent name="C:\develop\git\ga4-anomaly-detector\app\infrastructure" />
-      <recent name="C:\develop\git\ga4-anomaly-detector\app\domain" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
       <recent name="C:\develop\git\ga4-anomaly-detector\dashboard" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.dashboard">
+  <component name="RunManager" selected="Python.main">
     <configuration name="dashboard" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="ga4-anomaly-detector" />
       <option name="ENV_FILES" value="" />
@@ -125,7 +104,9 @@
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="DEBUG_JUST_MY_CODE" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/dashboard/dashboard.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
@@ -148,7 +129,9 @@
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="DEBUG_JUST_MY_CODE" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/main.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
@@ -171,7 +154,9 @@
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="DEBUG_JUST_MY_CODE" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/test_run.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
@@ -212,6 +197,11 @@
       <workItem from="1777351848286" duration="399000" />
       <workItem from="1777352283301" duration="348000" />
       <workItem from="1777352658621" duration="1120000" />
+      <workItem from="1777551251152" duration="299000" />
+      <workItem from="1777551569012" duration="2016000" />
+      <workItem from="1777560894625" duration="6000" />
+      <workItem from="1777739105366" duration="543000" />
+      <workItem from="1777868051157" duration="12531000" />
     </task>
     <task id="LOCAL-00001" summary="test">
       <option name="closed" value="true" />
