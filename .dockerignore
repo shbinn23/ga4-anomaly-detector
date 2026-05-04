@@ -1,0 +1,13 @@
+.git
+.idea
+__pycache__
+**/__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+tests/
+*.md
+.env
+data/
+static/
+*.iml

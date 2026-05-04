@@ -16,6 +16,9 @@ data/*.json
 .idea/
 .vscode/
 
+# 압축 파일
+*.tar.gz
+
 # 운영체제 관련
 .DS_Store
 Thumbs.db
