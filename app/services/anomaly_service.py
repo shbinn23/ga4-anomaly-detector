@@ -1,3 +1,4 @@
+import gc
 import pandas as pd
 import logging
 from typing import Dict, Any
@@ -77,34 +78,35 @@ class AnomalyService:
             raise
 
     def run_channel_analysis(self, payload: ChannelUpdateTask) -> Dict[str, Any]:
-        """
-        n8n으로부터 수신된 채널 데이터를 개별 Prophet 모델로 분석합니다.[cite: 12]
-        결과는 channel_anomaly_db.json에 저장됩니다.
-        """
-        try:
-            analysis_results = {}
-            for prop in payload.data:
-                prop_id = prop.property_id
-                prop_channels = {}
+        analysis_results = {}
+        processed_count = 0
 
-                # 각 채널별로 독립적인 AI 분석 수행
-                for channel_name, history in prop.grouped_channels.items():
-                    # 데이터프레임 변환 및 전처리[cite: 6, 12]
+        for prop in payload.data:
+            prop_id = prop.property_id
+            prop_channels = {}
+
+            logger.info(f"Processing Property: {prop_id} ({prop.property_name})")
+
+            for channel_name, history in prop.grouped_channels.items():
+                try:
+                    # 1. 데이터 검증: 최소 데이터 포인트 확인 (Prophet은 최소 2개 필요)[cite: 7, 9]
+                    if len(history) < 2:
+                        logger.warning(f"Skipping {channel_name}: Not enough data points.")
+                        continue
+
                     df = pd.DataFrame([h.dict() for h in history])
                     df.rename(columns={'date': 'ds', 'sessions': 'y'}, inplace=True)
                     df['ds'] = pd.to_datetime(df['ds'])
 
-                    # Prophet 학습 및 시계열 예측 실행[cite: 7, 9]
+                    # 2. 분석 실행[cite: 7, 21]
                     forecast = self.detector.train_and_predict(df)
 
-                    # 마지막 날짜 기준 이상치 판별[cite: 9]
                     is_anomaly = self.detector.check_anomaly(
                         actual=df['y'].iloc[-1],
                         lower=forecast['yhat_lower'].iloc[-1],
                         upper=forecast['yhat_upper'].iloc[-1]
                     )
 
-                    # 채널별 분석 결과 스택 구성[cite: 12, 23]
                     prop_channels[channel_name] = {
                         "is_anomaly": is_anomaly,
                         "last_sessions": int(df['y'].iloc[-1]),
@@ -116,12 +118,24 @@ class AnomalyService:
                             "yhat_upper": forecast['yhat_upper'].round(2).tolist()
                         }
                     }
-                analysis_results[prop_id] = prop_channels
 
-            # JSONStorage를 통해 파일로 영속화
+                    # 3. 메모리 강제 해제 (핵심)
+                    del df
+                    del forecast
+                    gc.collect()
+
+                except Exception as e:
+                    logger.error(f"Error in channel {channel_name}: {str(e)}")
+                    continue # 한 채널이 터져도 다음 채널 진행
+
+            analysis_results[prop_id] = prop_channels
+            processed_count += 1
+
+            # 프로퍼티 단위로도 메모리 정리
+            gc.collect()
+
+        # 4. 결과 영속화
+        if analysis_results:
             self.storage.save_all_channel_analysis(analysis_results)
-            return {"status": "success", "processed_properties": len(analysis_results)}
 
-        except Exception as e:
-            logger.error(f"채널 분석 처리 중 오류 발생: {str(e)}")
-            raise
+        return {"status": "success", "processed_properties": processed_count}
