@@ -9,7 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatNumber, formatPercent } from "@/lib/format";
+import { formatDisplayValue, formatNumber, formatPercent } from "@/lib/format";
 import type { AnalysisTableRow } from "@/lib/types";
 
 export function AnalysisTable({
@@ -63,8 +63,8 @@ export function AnalysisTable({
                   </Badge>
                 </TableCell>
                 <TableCell>{row.lastAnomalyDate}</TableCell>
-                <TableCell>{formatNumber(row.latestY)}</TableCell>
-                <TableCell>{formatNumber(row.latestYhat)}</TableCell>
+                <TableCell>{formatDisplayValue(row.latestY, row.valueFormat)}</TableCell>
+                <TableCell>{formatDisplayValue(row.latestYhat, row.valueFormat)}</TableCell>
                 <TableCell className={row.alertStatus === "alert" ? "font-semibold text-anomaly-foreground" : undefined}>
                   {formatPercent(row.latestDeviation)}
                 </TableCell>

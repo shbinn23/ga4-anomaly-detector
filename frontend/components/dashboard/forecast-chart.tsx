@@ -13,6 +13,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { normalizeForecastData } from "@/lib/forecast";
+import { formatDisplayValue } from "@/lib/format";
 import type { AnalysisRecord } from "@/lib/types";
 
 const chartConfig = {
@@ -37,11 +38,15 @@ const chartConfig = {
 export function ForecastChart({
   analysis,
   meta,
+  valueFormat = "number",
 }: {
   analysis: AnalysisRecord | null;
   meta?: ReactNode;
+  valueFormat?: "number" | "percentage";
 }) {
   const data = normalizeForecastData(analysis?.result.forecast_data);
+  const valueFormatter = (value: unknown) =>
+    typeof value === "number" ? formatDisplayValue(value, valueFormat) : String(value ?? "-");
   const anomalyPoints = data.filter((point) => point.is_anomaly);
   const anomalyDates = new Set(anomalyPoints.map((point) => point.ds));
 
@@ -74,8 +79,9 @@ export function ForecastChart({
                 tickMargin={8}
                 width={44}
                 stroke="var(--muted-foreground)"
+                tickFormatter={(value) => valueFormatter(value)}
               />
-              <ChartTooltip content={<ChartTooltipContent anomalyDates={anomalyDates} />} />
+              <ChartTooltip content={<ChartTooltipContent anomalyDates={anomalyDates} valueFormatter={valueFormatter} />} />
               <Area
                 dataKey="yhat_upper"
                 type="monotone"

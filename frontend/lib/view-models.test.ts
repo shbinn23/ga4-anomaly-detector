@@ -12,9 +12,11 @@ import {
   calculateBoundaryBreach,
   decodeGroupKey,
   encodeGroupKey,
+  getThemeDefinition,
   getDetectionResults,
   getDiagnosisResults,
   groupDiagnosisByDetection,
+  isSupportedTheme,
 } from "./view-models";
 
 const forecast = (
@@ -53,7 +55,9 @@ const record = (overrides: Partial<AnalysisRecord["result"]> & { id: string }): 
       mode: overrides.mode ?? "diagnosis",
       property_id: overrides.property_id ?? "prop-1",
       property_name: overrides.property_name ?? "Store",
+      theme_id: overrides.theme_id,
       metric_name: overrides.metric_name ?? "eventCount",
+      metric_type: overrides.metric_type,
       dimension: overrides.dimension ?? "eventName",
       dimension_value: overrides.dimension_value ?? "purchase",
       dimensions: overrides.dimensions ?? {},
@@ -192,13 +196,68 @@ describe("dashboard view models", () => {
     ]);
 
     expect(overview.stats.totalAnalyses).toBe(2);
-    expect(overview.themeSummaries.map((item) => item.theme)).toEqual(["sessions", "ecommerce"]);
+    expect(overview.themeSummaries.map((item) => item.theme)).toEqual(["sessions", "ecommerce", "unassigned-traffic"]);
     expect(overview.propertyThemeMatrix[0]).toMatchObject({
       propertyName: "Property 1",
       themes: [
         { theme: "sessions", status: "anomaly" },
         { theme: "ecommerce", status: "normal" },
+        { theme: "unassigned-traffic", status: "missing" },
       ],
+    });
+  });
+
+  it("adds Unassigned Traffic to the theme registry and route support", () => {
+    expect(isSupportedTheme("unassigned-traffic")).toBe(true);
+    expect(getThemeDefinition("unassigned-traffic")).toMatchObject({
+      slug: "unassigned-traffic",
+      themeId: "unassigned_traffic",
+      domain: "traffic_quality",
+      label: "Unassigned Traffic",
+    });
+  });
+
+  it("adds Unassigned Traffic to theme summaries and health matrix as percentage", () => {
+    const overview = buildMainOverview([
+      record({
+        id: "unassigned-detection",
+        domain: "traffic_quality",
+        theme_id: "unassigned_traffic",
+        mode: "detection",
+        metric_name: "unassigned_session_share",
+        metric_type: "derived_ratio",
+        property_id: "p1",
+        property_name: "Property 1",
+        dimension: null,
+        dimension_value: null,
+        latest_point: {
+          ds: "2026-05-02",
+          y: 0.25,
+          yhat: 0.1,
+          yhat_lower: 0.05,
+          yhat_upper: 0.12,
+          is_anomaly: true,
+        },
+        forecast_data: {
+          ds: ["2026-05-01", "2026-05-02"],
+          y: [0.1, 0.25],
+          yhat: [0.1, 0.1],
+          yhat_lower: [0.05, 0.05],
+          yhat_upper: [0.12, 0.12],
+          is_anomaly: [false, true],
+        },
+      }),
+    ]);
+
+    expect(overview.themeSummaries.find((item) => item.theme === "unassigned-traffic")).toMatchObject({
+      label: "Unassigned Traffic",
+      href: "/dashboard/themes/unassigned-traffic",
+      anomalyCount: 1,
+    });
+    expect(overview.propertyThemeMatrix[0].themes.find((item) => item.theme === "unassigned-traffic")).toMatchObject({
+      status: "anomaly",
+      valueFormat: "percentage",
+      actual: 0.25,
     });
   });
 
@@ -323,6 +382,7 @@ describe("dashboard view models", () => {
       themes: [
         { theme: "sessions", status: "anomaly" },
         { theme: "ecommerce", status: "watch", label: "관찰 필요" },
+        { theme: "unassigned-traffic", status: "missing" },
       ],
     });
   });
@@ -830,5 +890,95 @@ describe("dashboard view models", () => {
 
     expect(buildThemeDetectionPage(allItems, "sessions").chartItems.map((item) => item.row.id)).toEqual(["sessions-detection"]);
     expect(buildThemeDetectionPage(allItems, "ecommerce").chartItems.map((item) => item.row.id)).toEqual(["ecommerce-detection"]);
+  });
+
+  it("shows Unassigned detection items in the Unassigned theme chart grid", () => {
+    const detection = record({
+      id: "unassigned-detection",
+      domain: "traffic_quality",
+      theme_id: "unassigned_traffic",
+      mode: "detection",
+      metric_name: "unassigned_session_share",
+      metric_type: "derived_ratio",
+      dimension: null,
+      dimension_value: null,
+    });
+
+    const page = buildThemeDetectionPage([detection], "unassigned-traffic");
+
+    expect(page.chartItems.map((item) => item.row.id)).toEqual(["unassigned-detection"]);
+    expect(page.rows[0]).toMatchObject({
+      theme: "unassigned-traffic",
+      valueFormat: "percentage",
+    });
+  });
+
+  it("shows Unassigned diagnosis Source Medium values including not set", () => {
+    const detection = record({
+      id: "unassigned-detection",
+      domain: "traffic_quality",
+      theme_id: "unassigned_traffic",
+      mode: "detection",
+      group_key: "prop:traffic_quality:unassigned_traffic:2026-05-02",
+      metric_name: "unassigned_session_share",
+      metric_type: "derived_ratio",
+      dimension: null,
+      dimension_value: null,
+    });
+    const diagnosis = record({
+      id: "unassigned-diagnosis",
+      domain: "traffic_quality",
+      theme_id: "unassigned_traffic",
+      mode: "diagnosis",
+      group_key: "prop:traffic_quality:unassigned_traffic:2026-05-02",
+      metric_name: "sessions",
+      metric_type: "raw_count",
+      dimension: "sessionSourceMedium",
+      dimension_value: "(not set)",
+    });
+
+    const page = buildDiagnosisPage([detection, diagnosis], encodeGroupKey("prop:traffic_quality:unassigned_traffic:2026-05-02"));
+
+    expect(page.rows[0]).toMatchObject({
+      dimension: "sessionSourceMedium",
+      dimensionValue: "(not set)",
+      valueFormat: "number",
+    });
+  });
+
+  it("includes Unassigned detection alerts in reports without creating diagnosis cards", () => {
+    const detection = record({
+      id: "unassigned-report-detection",
+      domain: "traffic_quality",
+      theme_id: "unassigned_traffic",
+      mode: "detection",
+      group_key: "prop:traffic_quality:unassigned_traffic:2026-05-02",
+      metric_name: "unassigned_session_share",
+      metric_type: "derived_ratio",
+      dimension: null,
+      dimension_value: null,
+    });
+    const diagnosis = record({
+      id: "unassigned-report-diagnosis",
+      domain: "traffic_quality",
+      theme_id: "unassigned_traffic",
+      mode: "diagnosis",
+      group_key: "prop:traffic_quality:unassigned_traffic:2026-05-02",
+      metric_name: "sessions",
+      dimension: "sessionSourceMedium",
+      dimension_value: "(empty)",
+    });
+
+    const page = buildReportsPage([detection, diagnosis]);
+    const detailReports = page.propertyReports.flatMap((item) => item.reports);
+
+    expect(detailReports.map((item) => item.id)).toEqual(["unassigned-report-detection"]);
+    expect(detailReports[0]).toMatchObject({
+      theme: "unassigned-traffic",
+      themeLabel: "Unassigned Traffic",
+      valueFormat: "percentage",
+      diagnosisCandidates: [expect.objectContaining({ dimensionValue: "(empty)" })],
+    });
+    expect(detailReports[0].body).toContain("Unassigned 비율");
   });
 });

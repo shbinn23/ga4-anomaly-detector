@@ -4,7 +4,7 @@ import { EmptyState } from "@/components/dashboard/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getDashboardData } from "@/lib/api";
-import { formatNumber } from "@/lib/format";
+import { formatDisplayValue } from "@/lib/format";
 import type { ReportItem } from "@/lib/types";
 import { buildReportsPage } from "@/lib/view-models";
 
@@ -140,17 +140,18 @@ export default async function ReportsPage({
 }
 
 function ReportBody({ report }: { report: ReportItem }) {
-  const actual = formatNumber(report.latestY);
-  const lower = formatNumber(report.latestLower);
-  const upper = formatNumber(report.latestUpper);
+  const actual = formatDisplayValue(report.latestY, report.valueFormat);
+  const lower = formatDisplayValue(report.latestLower, report.valueFormat);
+  const upper = formatDisplayValue(report.latestUpper, report.valueFormat);
   const boundaryLabel = report.direction === "down" ? "하단" : "상단";
+  const metricName = report.metricName === "unassigned_session_share" ? "Unassigned 비율" : report.metricName;
   const breachLabel = report.breachRate === null
     ? report.direction === "down" ? "하회" : "초과"
     : `${report.breachRate.toFixed(1)}% ${report.direction === "down" ? "하회" : "초과"}`;
 
   return (
     <p>
-      {report.reportDate} 기준 {report.propertyName} 프로퍼티의 {report.metricName}는 {actual}로,
+      {report.reportDate} 기준 {report.propertyName} 프로퍼티의 {metricName}{metricName === "Unassigned 비율" ? "은" : "는"} {actual}로,
       예측 범위 {lower} ~ {upper}의 {boundaryLabel}을 {report.breachRate === null ? "" : "약 "}
       <span className="font-semibold text-anomaly-foreground">{breachLabel}</span>
       했습니다.

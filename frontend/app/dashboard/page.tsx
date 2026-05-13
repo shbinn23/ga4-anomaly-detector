@@ -7,7 +7,7 @@ import { SummaryCards } from "@/components/dashboard/summary-cards";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getDashboardData } from "@/lib/api";
-import { formatNumber, formatPercent } from "@/lib/format";
+import { formatDisplayValue, formatNumber, formatPercent } from "@/lib/format";
 import type { PropertyThemeCell, SessionsTrendingItem } from "@/lib/types";
 import { buildMainOverview } from "@/lib/view-models";
 
@@ -61,13 +61,14 @@ export default async function DashboardPage() {
               </CardContent>
             </Card>
 
-            <section className="grid gap-3 md:grid-cols-2">
+            <section className="grid gap-3 md:grid-cols-3">
               {overview.themeSummaries.map((theme) => (
                 <Card key={theme.theme}>
                   <CardHeader>
-                    <CardTitle className="text-2xl font-semibold tracking-[-0.02em]">{theme.theme}</CardTitle>
+                    <CardTitle className="text-2xl font-semibold tracking-[-0.02em]">{theme.label}</CardTitle>
                   </CardHeader>
                   <CardContent className="grid gap-3 text-sm text-muted-foreground">
+                    <p>{theme.description}</p>
                     <div className="grid grid-cols-2 gap-2">
                       <span>Total {theme.totalCount}</span>
                       <span>Anomalies {theme.anomalyCount}</span>
@@ -87,14 +88,15 @@ export default async function DashboardPage() {
                 <CardTitle className="text-2xl font-semibold tracking-[-0.02em]">Property Health Matrix</CardTitle>
               </CardHeader>
               <CardContent className="grid gap-3">
-                <div className="hidden grid-cols-[minmax(12rem,1fr)_repeat(2,minmax(12rem,1fr))] gap-3 text-xs font-semibold uppercase tracking-[0.02em] text-muted-foreground md:grid">
+                <div className="hidden grid-cols-[minmax(12rem,1fr)_repeat(3,minmax(12rem,1fr))] gap-3 text-xs font-semibold uppercase tracking-[0.02em] text-muted-foreground md:grid">
                   <span>프로퍼티</span>
-                  <span>sessions</span>
-                  <span>ecommerce</span>
+                  {overview.themeSummaries.map((theme) => (
+                    <span key={theme.theme}>{theme.label}</span>
+                  ))}
                 </div>
                 {overview.propertyThemeMatrix.slice(0, 24).map((row) => (
                   <div
-                    className="grid gap-3 border-b py-3 text-sm md:grid-cols-[minmax(12rem,1fr)_repeat(2,minmax(12rem,1fr))]"
+                    className="grid gap-3 border-b py-3 text-sm md:grid-cols-[minmax(12rem,1fr)_repeat(3,minmax(12rem,1fr))]"
                     key={row.propertyId}
                   >
                     <div className="font-medium md:py-2">{row.propertyName}</div>
@@ -202,7 +204,7 @@ function HealthCell({ cell }: { cell: PropertyThemeCell }) {
             : "bg-muted/55 text-muted-foreground",
     ].join(" ")}>
       <div className="flex items-center justify-between gap-2">
-        <span className="font-semibold">{cell.theme}</span>
+        <span className="font-semibold">{cell.themeLabel}</span>
         <Badge tone={cell.status === "anomaly" ? "anomaly" : cell.status === "watch" ? "warning" : cell.status === "normal" ? "neutral" : "neutral"}>
           {cell.status === "anomaly" ? "alert" : cell.status}
         </Badge>
@@ -210,7 +212,7 @@ function HealthCell({ cell }: { cell: PropertyThemeCell }) {
       <div className="text-sm">{cell.label}</div>
       {cell.actual !== null ? (
         <div className="text-xs opacity-80">
-          actual {formatNumber(cell.actual)} · {formatNumber(cell.lower)} ~ {formatNumber(cell.upper)}
+          actual {formatDisplayValue(cell.actual, cell.valueFormat)} · {formatDisplayValue(cell.lower, cell.valueFormat)} ~ {formatDisplayValue(cell.upper, cell.valueFormat)}
         </div>
       ) : null}
     </div>

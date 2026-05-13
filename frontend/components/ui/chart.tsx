@@ -80,6 +80,7 @@ type ChartTooltipContentProps = {
     value?: unknown;
   }>;
   anomalyDates?: Set<string>;
+  valueFormatter?: (value: unknown) => string;
   label?: React.ReactNode;
   className?: string;
 };
@@ -88,6 +89,7 @@ function ChartTooltipContent({
   active,
   anomalyDates,
   payload,
+  valueFormatter,
   label,
   className,
 }: ChartTooltipContentProps) {
@@ -112,7 +114,9 @@ function ChartTooltipContent({
           return (
             <div key={key} className="flex min-w-36 items-center justify-between gap-4 text-muted-foreground">
               <span>{itemConfig?.label || key}</span>
-              <span className="font-medium tabular-nums text-foreground">{String(item.value ?? "-")}</span>
+              <span className="font-medium tabular-nums text-foreground">
+                {valueFormatter ? valueFormatter(item.value) : String(item.value ?? "-")}
+              </span>
             </div>
           );
         })}

@@ -20,7 +20,9 @@ export type AnalysisResult = {
   mode: string;
   property_id?: string;
   property_name?: string | null;
+  theme_id?: string | null;
   metric_name: string;
+  metric_type?: string | null;
   dimension: string | null;
   dimension_value: string | null;
   dimensions: Record<string, unknown>;
@@ -78,8 +80,10 @@ export type AnalysisTableRow = {
   isCurrentAnomaly: boolean;
   alertStatus: "normal" | "watch" | "alert";
   domain: string;
+  theme: string;
   mode: string;
   metricName: string;
+  valueFormat: "number" | "percentage";
   dimension: string;
   dimensionValue: string;
   anomalyCount: number;
@@ -111,6 +115,8 @@ export type DashboardSections = {
 
 export type ThemeSummary = {
   theme: string;
+  label: string;
+  description: string;
   href: string;
   totalCount: number;
   detectionCount: number;
@@ -120,6 +126,8 @@ export type ThemeSummary = {
 
 export type PropertyThemeCell = {
   theme: string;
+  themeLabel: string;
+  valueFormat: "number" | "percentage";
   status: "anomaly" | "watch" | "normal" | "missing";
   href: string;
   label: string;

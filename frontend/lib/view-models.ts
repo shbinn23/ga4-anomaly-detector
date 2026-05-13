@@ -17,7 +17,54 @@ import type {
   ThemeSummary,
 } from "@/lib/types";
 
-export const SUPPORTED_THEMES = ["sessions", "ecommerce"] as const;
+export const THEME_REGISTRY = [
+  {
+    slug: "sessions",
+    domain: "sessions",
+    themeId: null,
+    label: "Sessions",
+    reportLabel: "세션",
+    description: "세션 지표의 현재 이상 여부를 확인합니다.",
+  },
+  {
+    slug: "ecommerce",
+    domain: "ecommerce",
+    themeId: null,
+    label: "Ecommerce",
+    reportLabel: "이커머스 이벤트",
+    description: "이커머스 퍼널 이벤트의 현재 이상 여부를 확인합니다.",
+  },
+  {
+    slug: "unassigned-traffic",
+    domain: "traffic_quality",
+    themeId: "unassigned_traffic",
+    label: "Unassigned Traffic",
+    reportLabel: "Unassigned Traffic",
+    description: "GA4가 트래픽 출처를 분류하지 못한 세션 비율의 이상 여부를 확인합니다.",
+  },
+] as const;
+
+export const SUPPORTED_THEMES = THEME_REGISTRY.map((theme) => theme.slug);
+export type SupportedThemeSlug = (typeof SUPPORTED_THEMES)[number];
+
+export function getThemeDefinition(theme: string) {
+  return THEME_REGISTRY.find((item) => item.slug === theme);
+}
+
+export function isSupportedTheme(theme: string) {
+  return Boolean(getThemeDefinition(theme));
+}
+
+export function getThemeSlugForResult(result: AnalysisRecord["result"]) {
+  if (result.theme_id === "unassigned_traffic") {
+    return "unassigned-traffic";
+  }
+  return result.domain;
+}
+
+export function getThemeHrefForResult(result: AnalysisRecord["result"]) {
+  return `/dashboard/themes/${getThemeSlugForResult(result)}`;
+}
 
 export function encodeGroupKey(groupKey: string) {
   return encodeURIComponent(groupKey);
@@ -80,11 +127,13 @@ export function buildMainOverview(items: AnalysisRecord[]): MainOverview {
 }
 
 export function buildThemeSummaries(items: AnalysisRecord[]): ThemeSummary[] {
-  return SUPPORTED_THEMES.map((theme) => {
-    const themeItems = items.filter((item) => item.result.domain === theme);
+  return THEME_REGISTRY.map((theme) => {
+    const themeItems = items.filter((item) => getThemeSlugForResult(item.result) === theme.slug);
     return {
-      theme,
-      href: `/dashboard/themes/${theme}`,
+      theme: theme.slug,
+      label: theme.label,
+      description: theme.description,
+      href: `/dashboard/themes/${theme.slug}`,
       totalCount: themeItems.length,
       detectionCount: themeItems.filter((item) => item.result.mode === "detection").length,
       diagnosisCount: themeItems.filter((item) => item.result.mode === "diagnosis").length,
@@ -103,11 +152,13 @@ export function buildPropertyThemeMatrix(items: AnalysisRecord[]): PropertyTheme
       rows.set(propertyId, {
         propertyId,
         propertyName,
-        themes: SUPPORTED_THEMES.map((theme) => ({
-          theme,
+        themes: THEME_REGISTRY.map((theme) => ({
+          theme: theme.slug,
+          themeLabel: theme.label,
           status: "missing",
-          href: `/dashboard/themes/${theme}`,
+          href: `/dashboard/themes/${theme.slug}`,
           label: "데이터 없음",
+          valueFormat: theme.slug === "unassigned-traffic" ? "percentage" : "number",
           breachRate: null,
           direction: "unknown",
           actual: null,
@@ -120,7 +171,7 @@ export function buildPropertyThemeMatrix(items: AnalysisRecord[]): PropertyTheme
     }
 
     const row = rows.get(propertyId);
-    const cell = row?.themes.find((themeCell) => themeCell.theme === item.result.domain);
+    const cell = row?.themes.find((themeCell) => themeCell.theme === getThemeSlugForResult(item.result));
     const candidate = buildHealthCell(item);
     if (cell && candidate && healthRank(candidate.status) >= healthRank(cell.status)) {
       Object.assign(cell, candidate);
@@ -215,11 +266,20 @@ export function buildThemeDetectionPage(
   items: AnalysisRecord[],
   theme: string,
 ): ThemeDetectionPage {
+  const themeDefinition = getThemeDefinition(theme);
   const detections = getDetectionResults(
-    items.filter((item) => item.result.domain === theme && item.result.mode === "detection"),
+    items.filter((item) =>
+      Boolean(themeDefinition) &&
+      getThemeSlugForResult(item.result) === theme &&
+      item.result.mode === "detection",
+    ),
   );
   const diagnoses = getDiagnosisResults(
-    items.filter((item) => item.result.domain === theme && item.result.mode === "diagnosis"),
+    items.filter((item) =>
+      Boolean(themeDefinition) &&
+      getThemeSlugForResult(item.result) === theme &&
+      item.result.mode === "diagnosis",
+    ),
   );
   const diagnosisGroups = groupDiagnosisByDetection(detections, diagnoses);
   const rows = buildAnalysisRows(detections).map((row) => {
@@ -281,8 +341,8 @@ export function buildReportsPage(items: AnalysisRecord[]): ReportsPage {
     ).slice(0, 3);
     return {
       ...row,
-      theme: row.domain,
-      themeLabel: themeLabel(row.domain),
+      theme: row.theme,
+      themeLabel: themeLabel(row.theme),
       reportDate,
       headline: buildReportHeadline(row),
       body: buildReportBody(row, reportDate),
@@ -291,7 +351,7 @@ export function buildReportsPage(items: AnalysisRecord[]): ReportsPage {
       absoluteDeviation:
         row.latestY !== null && row.latestYhat !== null ? row.latestY - row.latestYhat : null,
       breachRate: calculateBreachRate(row),
-      detectionHref: `/dashboard/themes/${row.domain}`,
+      detectionHref: `/dashboard/themes/${row.theme}`,
       diagnosisHref: diagnosisCandidates.length ? `/dashboard/diagnosis/${encodeGroupKey(row.groupKey)}` : undefined,
       diagnosisCandidates,
     };
@@ -326,7 +386,7 @@ export function buildSummary(sections: DashboardSections): SummaryStats {
     anomalousPropertyCount: new Set(
       anomalousItems.map((item) => item.result.property_id || item.result.property_name || item.id),
     ).size,
-    anomalousThemeCount: new Set(anomalousItems.map((item) => item.result.domain)).size,
+    anomalousThemeCount: new Set(anomalousItems.map((item) => getThemeSlugForResult(item.result))).size,
     latestAnomalyDate,
   };
 }
@@ -344,8 +404,10 @@ export function buildAnalysisRows(analyses: AnalysisRecord[]): AnalysisTableRow[
       isCurrentAnomaly: result.is_current_anomaly,
       alertStatus: result.alert_status,
       domain: result.domain || "-",
+      theme: getThemeSlugForResult(result),
       mode: result.mode || "-",
       metricName: result.metric_name || "-",
+      valueFormat: isRatioResult(result) ? "percentage" : "number",
       dimension: result.dimension ?? "-",
       dimensionValue: result.dimension_value ?? "-",
       anomalyCount: countAnomalyPoints(result.forecast_data),
@@ -419,10 +481,12 @@ function buildHealthCell(item: AnalysisRecord): PropertyThemeRow["themes"][numbe
   const breachRate = breach?.score === null || breach?.score === undefined ? null : breach.score * 100;
 
   return {
-    theme: item.result.domain,
+    theme: getThemeSlugForResult(item.result),
+    themeLabel: themeDefinitionForResult(item.result).label,
     status,
-    href: `/dashboard/themes/${item.result.domain}`,
+    href: getThemeHrefForResult(item.result),
     label: healthCellLabel(status, direction, breachRate),
+    valueFormat: isRatioResult(item.result) ? "percentage" : "number",
     breachRate,
     direction,
     actual: breach?.actual ?? null,
@@ -537,26 +601,27 @@ function buildReportHeadline(row: AnalysisTableRow) {
     ? "예상 범위보다 낮게 관측되었습니다."
     : "예상 범위보다 높게 관측되었습니다.";
 
-  return `${row.propertyName}의 ${themeLabel(row.domain)} 지표가 ${directionText}`;
+  return `${row.propertyName}의 ${themeLabel(row.theme)} 지표가 ${directionText}`;
 }
 
 function buildReportBody(row: AnalysisTableRow, reportDate: string) {
-  const actual = formatReportNumber(row.latestY);
-  const lower = formatReportNumber(row.latestLower);
-  const upper = formatReportNumber(row.latestUpper);
+  const actual = formatReportValue(row.latestY, row.valueFormat);
+  const lower = formatReportValue(row.latestLower, row.valueFormat);
+  const upper = formatReportValue(row.latestUpper, row.valueFormat);
   const breachRate = calculateBreachRate(row);
+  const metricName = row.metricName === "unassigned_session_share" ? "Unassigned 비율" : row.metricName;
 
   if (row.direction === "down") {
     const breachText = breachRate === null
       ? "하단을 하회했습니다."
       : `하단을 약 ${breachRate.toFixed(1)}% 하회했습니다.`;
-    return `${reportDate} 기준 ${row.propertyName} 프로퍼티의 ${row.metricName}는 ${actual}로, 예측 범위 ${lower} ~ ${upper}의 ${breachText}`;
+    return `${reportDate} 기준 ${row.propertyName} 프로퍼티의 ${metricName}${metricParticle(metricName)} ${actual}로, 예측 범위 ${lower} ~ ${upper}의 ${breachText}`;
   }
 
   const breachText = breachRate === null
     ? "상단을 초과했습니다."
     : `상단을 약 ${breachRate.toFixed(1)}% 초과했습니다.`;
-  return `${reportDate} 기준 ${row.propertyName} 프로퍼티의 ${row.metricName}는 ${actual}로, 예측 범위 ${lower} ~ ${upper}의 ${breachText}`;
+  return `${reportDate} 기준 ${row.propertyName} 프로퍼티의 ${metricName}${metricParticle(metricName)} ${actual}로, 예측 범위 ${lower} ~ ${upper}의 ${breachText}`;
 }
 
 function buildDiagnosisSentence(candidates: AnalysisTableRow[]) {
@@ -585,8 +650,19 @@ function formatReportNumber(value: number | null) {
   return value === null ? "-" : new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 1 }).format(value);
 }
 
+function formatReportValue(value: number | null, valueFormat: "number" | "percentage") {
+  if (valueFormat === "percentage") {
+    return value === null ? "-" : `${(value * 100).toFixed(1)}%`;
+  }
+  return formatReportNumber(value);
+}
+
 function themeLabel(theme: string) {
-  return theme === "sessions" ? "세션" : theme === "ecommerce" ? "이커머스 이벤트" : theme;
+  return THEME_REGISTRY.find((item) => item.slug === theme)?.reportLabel ?? theme;
+}
+
+function metricParticle(metricName: string) {
+  return metricName === "Unassigned 비율" ? "은" : "는";
 }
 
 function getGroupKey(item: AnalysisRecord) {
@@ -596,6 +672,14 @@ function getGroupKey(item: AnalysisRecord) {
     item.result.metric_name,
     item.result.target_point?.ds || item.result.target_date || item.result.latest_point?.ds || "",
   ].join(":");
+}
+
+function isRatioResult(result: AnalysisRecord["result"]) {
+  return result.metric_name === "unassigned_session_share" || result.metric_type === "derived_ratio";
+}
+
+function themeDefinitionForResult(result: AnalysisRecord["result"]) {
+  return getThemeDefinition(getThemeSlugForResult(result)) ?? THEME_REGISTRY[0];
 }
 
 function groupBy<T>(items: T[], getKey: (item: T) => string) {

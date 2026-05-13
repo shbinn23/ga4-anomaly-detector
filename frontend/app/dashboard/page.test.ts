@@ -13,6 +13,8 @@ describe("dashboard page composition", () => {
     expect(source).toContain("/dashboard/themes/sessions");
     expect(source).toContain("Ecommerce");
     expect(source).toContain("/dashboard/themes/ecommerce");
+    expect(source).toContain("Unassigned Traffic");
+    expect(source).toContain("/dashboard/themes/unassigned-traffic");
     expect(source).toContain("Reports");
     expect(source).toContain("/dashboard/reports");
   });
@@ -38,6 +40,7 @@ describe("dashboard page composition", () => {
     expect(source).toContain('href: "/dashboard"');
     expect(source).toContain('href: "/dashboard/themes/sessions"');
     expect(source).toContain('href: "/dashboard/themes/ecommerce"');
+    expect(source).toContain('href: "/dashboard/themes/unassigned-traffic"');
     expect(source).toContain('href: "/dashboard/reports"');
     expect(source).not.toContain("pointer-events-none");
     expect(source).not.toContain("disabled");
@@ -148,6 +151,7 @@ describe("dashboard page composition", () => {
     const source = readFileSync(resolve(process.cwd(), "app/dashboard/themes/theme-page.tsx"), "utf-8");
     const sessionsSource = readFileSync(resolve(process.cwd(), "app/dashboard/themes/sessions/page.tsx"), "utf-8");
     const ecommerceSource = readFileSync(resolve(process.cwd(), "app/dashboard/themes/ecommerce/page.tsx"), "utf-8");
+    const unassignedSource = readFileSync(resolve(process.cwd(), "app/dashboard/themes/unassigned-traffic/page.tsx"), "utf-8");
     const dynamicSource = readFileSync(resolve(process.cwd(), "app/dashboard/themes/[theme]/page.tsx"), "utf-8");
 
     expect(source).toContain('href: `/dashboard/themes/${theme}?tab=chart`');
@@ -155,6 +159,8 @@ describe("dashboard page composition", () => {
     expect(source.indexOf('label: "Chart"')).toBeLessThan(source.indexOf('label: "Table"'));
     expect(sessionsSource).toContain('query.tab === "table" ? "table" : "chart"');
     expect(ecommerceSource).toContain('query.tab === "table" ? "table" : "chart"');
+    expect(unassignedSource).toContain('theme="unassigned-traffic"');
+    expect(unassignedSource).toContain('query.tab === "table" ? "table" : "chart"');
     expect(dynamicSource).toContain('query.tab === "table" ? "table" : "chart"');
     expect(source).toContain("PageTabs");
   });

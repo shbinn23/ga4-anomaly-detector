@@ -4,6 +4,7 @@ const navItems = [
   { label: "Overview", href: "/dashboard" },
   { label: "Sessions", href: "/dashboard/themes/sessions" },
   { label: "Ecommerce", href: "/dashboard/themes/ecommerce" },
+  { label: "Unassigned Traffic", href: "/dashboard/themes/unassigned-traffic" },
   { label: "Reports", href: "/dashboard/reports" },
 ];
 

@@ -5,8 +5,8 @@ import { EmptyState } from "@/components/dashboard/empty-state";
 import { ForecastChart } from "@/components/dashboard/forecast-chart";
 import { Card, CardContent } from "@/components/ui/card";
 import { getDashboardData } from "@/lib/api";
-import { formatPercent } from "@/lib/format";
-import { buildThemeDetectionPage, SUPPORTED_THEMES } from "@/lib/view-models";
+import { formatDisplayValue, formatPercent } from "@/lib/format";
+import { buildThemeDetectionPage, getThemeDefinition, isSupportedTheme } from "@/lib/view-models";
 
 export async function ThemeDetectionView({
   theme,
@@ -17,7 +17,8 @@ export async function ThemeDetectionView({
 }) {
   const data = await getDashboardData();
   const page = buildThemeDetectionPage(data.analyses, theme);
-  const supported = SUPPORTED_THEMES.includes(theme as (typeof SUPPORTED_THEMES)[number]);
+  const supported = isSupportedTheme(theme);
+  const themeDefinition = getThemeDefinition(theme);
 
   return (
     <DashboardShell
@@ -26,7 +27,7 @@ export async function ThemeDetectionView({
       description="Review property-level current alerts before opening Step 2 diagnosis."
       eyebrow="Step 1 Detection"
       key={theme}
-      title={theme}
+      title={themeDefinition?.label ?? theme}
     >
       {!supported ? (
         <EmptyState title="Unknown theme" description="This dashboard only includes current stored themes." />
@@ -46,14 +47,21 @@ export async function ThemeDetectionView({
                   <ForecastChart
                     analysis={analysis}
                     key={row.id}
+                    valueFormat={row.valueFormat}
                     meta={
                       <div className="grid gap-3 text-sm text-muted-foreground">
                         <div className="grid gap-1">
                           <span className="font-medium text-foreground">{row.propertyName}</span>
                           <span>{row.metricName}</span>
                           <span>Last anomaly {row.lastAnomalyDate}</span>
+                          {theme === "unassigned-traffic" ? (
+                            <span>Unassigned 비율이 예상 범위보다 높게 관측되었습니다.</span>
+                          ) : null}
                           <span>
                             Deviation <span className="font-semibold text-anomaly-foreground">{formatPercent(row.latestDeviation)}</span>
+                          </span>
+                          <span>
+                            Actual <span className="font-medium text-foreground">{formatDisplayValue(row.latestY, row.valueFormat)}</span>
                           </span>
                         </div>
                         {row.detailHref ? (

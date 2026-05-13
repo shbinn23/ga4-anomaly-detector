@@ -4,8 +4,8 @@ import { DashboardShell, PageActionLink, PageTabs } from "@/components/dashboard
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ForecastChart } from "@/components/dashboard/forecast-chart";
 import { getDashboardData } from "@/lib/api";
-import { formatPercent } from "@/lib/format";
-import { buildDiagnosisPage } from "@/lib/view-models";
+import { formatDisplayValue, formatPercent } from "@/lib/format";
+import { buildDiagnosisPage, getThemeHrefForResult } from "@/lib/view-models";
 
 export default async function DiagnosisPage({
   params,
@@ -19,7 +19,7 @@ export default async function DiagnosisPage({
   const activeTab = query.tab === "table" ? "table" : "chart";
   const data = await getDashboardData();
   const page = buildDiagnosisPage(data.analyses, groupKey);
-  const themeHref = page.detection ? `/dashboard/themes/${page.detection.result.domain}` : "/dashboard";
+  const themeHref = page.detection ? getThemeHrefForResult(page.detection.result) : "/dashboard";
 
   return (
     <DashboardShell
@@ -51,13 +51,19 @@ export default async function DiagnosisPage({
                     <ForecastChart
                       analysis={analysis}
                       key={row.id}
+                      valueFormat={row.valueFormat}
                       meta={
                         <div className="grid gap-1 text-sm text-muted-foreground">
-                          <span className="font-medium text-foreground">{row.dimension}</span>
+                          <span className="font-medium text-foreground">
+                            {row.dimension === "sessionSourceMedium" ? "Session Source / Medium" : row.dimension}
+                          </span>
                           <span>{row.dimensionValue}</span>
                           <span>Last anomaly {row.lastAnomalyDate}</span>
                           <span>
                             Deviation <span className="font-semibold text-anomaly-foreground">{formatPercent(row.latestDeviation)}</span>
+                          </span>
+                          <span>
+                            Actual <span className="font-medium text-foreground">{formatDisplayValue(row.latestY, row.valueFormat)}</span>
                           </span>
                         </div>
                       }
