@@ -48,6 +48,7 @@ class DashboardForecastPoint(BaseModel):
 class DashboardResultItem(BaseModel):
     id: str
     source: str
+    group_key: str
     analysis_id: str
     domain: str
     mode: str

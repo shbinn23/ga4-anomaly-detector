@@ -14,6 +14,7 @@ export type ForecastData = {
 export type AnalysisResult = {
   id?: string;
   source?: string;
+  group_key?: string;
   analysis_id: string;
   domain: string;
   mode: string;
@@ -59,13 +60,15 @@ export type ForecastPoint = {
 
 export type SummaryStats = {
   totalAnalyses: number;
-  anomalyCount: number;
-  latestResultDate: string;
-  affectedSegments: number;
+  detectionAnomalyCount: number;
+  diagnosisAnomalyCount: number;
+  latestAnomalyDate: string;
 };
 
 export type AnalysisTableRow = {
   id: string;
+  groupKey: string;
+  propertyName: string;
   domain: string;
   mode: string;
   metricName: string;
@@ -77,4 +80,19 @@ export type AnalysisTableRow = {
   latestYhat: number | null;
   latestDeviation: number | null;
   direction: "up" | "down" | "flat" | "unknown";
+};
+
+export type DashboardGroup = {
+  groupKey: string;
+  detection: AnalysisRecord | null;
+  diagnoses: AnalysisRecord[];
+};
+
+export type DashboardSections = {
+  all: AnalysisRecord[];
+  detections: AnalysisRecord[];
+  diagnoses: AnalysisRecord[];
+  groups: DashboardGroup[];
+  featuredDetection: AnalysisRecord | null;
+  featuredDiagnosis: AnalysisRecord | null;
 };

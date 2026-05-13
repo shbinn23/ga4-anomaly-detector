@@ -44,11 +44,14 @@ class DashboardResultsService:
             forecast_data = self._forecast_data(result, f"sessions:{property_id}")
             item_id = f"sessions:detection:{property_id}"
             has_anomaly = any(forecast_data.is_anomaly)
+            latest_point = self._latest_point(forecast_data, result.get("updated_at"))
+            group_key = self._group_key(str(property_id), "sessions", "sessions", latest_point)
             items.append(
                 self._item(
                     {
                         "id": item_id,
                         "source": "results_db",
+                        "group_key": group_key,
                         "analysis_id": item_id,
                         "domain": "sessions",
                         "mode": "detection",
@@ -62,7 +65,7 @@ class DashboardResultsService:
                         "is_anomaly": bool(result.get("is_anomaly", has_anomaly)),
                         "actual_value": result.get("last_sessions"),
                         "target_date": result.get("updated_at"),
-                        "latest_point": self._latest_point(forecast_data, result.get("updated_at")),
+                        "latest_point": latest_point,
                         "forecast_data": forecast_data,
                     },
                     f"sessions:{property_id}",
@@ -82,11 +85,14 @@ class DashboardResultsService:
                 forecast_data = self._forecast_data(result, f"channel:{property_id}:{dimension_value}")
                 item_id = f"sessions:diagnosis:{property_id}:{dimension_value}"
                 has_anomaly = any(forecast_data.is_anomaly)
+                latest_point = self._latest_point(forecast_data, result.get("updated_at"))
+                group_key = self._group_key(str(property_id), "sessions", "sessions", latest_point)
                 items.append(
                     self._item(
                         {
                             "id": item_id,
                             "source": "channel_anomaly_db",
+                            "group_key": group_key,
                             "analysis_id": item_id,
                             "domain": "sessions",
                             "mode": "diagnosis",
@@ -100,7 +106,7 @@ class DashboardResultsService:
                             "is_anomaly": bool(result.get("is_anomaly", has_anomaly)),
                             "actual_value": result.get("last_sessions"),
                             "target_date": result.get("updated_at"),
-                            "latest_point": self._latest_point(forecast_data, result.get("updated_at")),
+                            "latest_point": latest_point,
                             "forecast_data": forecast_data,
                         },
                         f"channel:{property_id}:{dimension_value}",
@@ -125,10 +131,13 @@ class DashboardResultsService:
             )
             dimension, dimension_value = self._representative_dimension(result.mode, result.dimensions)
             has_anomaly = any(forecast_data.is_anomaly)
+            latest_point = self._latest_point(forecast_data, result.target_date)
+            group_key = self._group_key(result.property_id, result.domain, result.metric_name, latest_point)
             item = self._item(
                 {
                     "id": str(key),
                     "source": "generic_analysis_db",
+                    "group_key": group_key,
                     "analysis_id": result.analysis_id,
                     "domain": result.domain,
                     "mode": result.mode,
@@ -144,7 +153,7 @@ class DashboardResultsService:
                     "lower_bound": result.lower_bound,
                     "upper_bound": result.upper_bound,
                     "target_date": result.target_date,
-                    "latest_point": self._latest_point(forecast_data, result.target_date),
+                    "latest_point": latest_point,
                     "forecast_data": forecast_data,
                 },
                 f"generic:{key}",
@@ -179,6 +188,16 @@ class DashboardResultsService:
             yhat_upper=forecast_data.yhat_upper[index],
             is_anomaly=forecast_data.is_anomaly[index],
         )
+
+    def _group_key(
+        self,
+        property_id: Optional[str],
+        domain: str,
+        metric_name: str,
+        latest_point: Optional[DashboardForecastPoint],
+    ) -> str:
+        latest_date = latest_point.ds if latest_point else ""
+        return ":".join([property_id or "", domain, metric_name, latest_date])
 
     def _representative_dimension(
         self,

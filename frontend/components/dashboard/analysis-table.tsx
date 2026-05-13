@@ -11,16 +11,23 @@ import {
 import { formatNumber, formatPercent } from "@/lib/format";
 import type { AnalysisTableRow } from "@/lib/types";
 
-export function AnalysisTable({ rows }: { rows: AnalysisTableRow[] }) {
+export function AnalysisTable({
+  rows,
+  title = "Analysis ledger",
+}: {
+  rows: AnalysisTableRow[];
+  title?: string;
+}) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="serif-heading text-2xl">Analysis ledger</CardTitle>
+        <CardTitle className="serif-heading text-2xl">{title}</CardTitle>
       </CardHeader>
       <CardContent>
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>Property</TableHead>
               <TableHead>Domain</TableHead>
               <TableHead>Mode</TableHead>
               <TableHead>Metric</TableHead>
@@ -37,6 +44,7 @@ export function AnalysisTable({ rows }: { rows: AnalysisTableRow[] }) {
           <TableBody>
             {rows.map((row) => (
               <TableRow key={row.id}>
+                <TableCell className="font-medium">{row.propertyName}</TableCell>
                 <TableCell className="font-medium">{row.domain}</TableCell>
                 <TableCell className="text-muted-foreground">{row.mode}</TableCell>
                 <TableCell className="text-muted-foreground">{row.metricName}</TableCell>

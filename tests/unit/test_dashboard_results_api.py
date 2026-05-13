@@ -70,6 +70,7 @@ def test_dashboard_results_returns_generic_analysis_result(tmp_path):
         {
             "id": "generic-key",
             "source": "generic_analysis_db",
+            "group_key": "prop-1:ecommerce:eventCount:2026-05-02",
             "analysis_id": "analysis-1",
             "domain": "ecommerce",
             "mode": "detection",
@@ -177,6 +178,7 @@ def test_dashboard_results_diagnosis_item_exposes_dimension_fields(tmp_path):
 
     assert item["dimension"] == "eventName"
     assert item["dimension_value"] == "purchase"
+    assert item["group_key"] == "prop-1:ecommerce:eventCount:2026-05-02"
     assert item["latest_point"] == {
         "ds": "2026-05-02",
         "y": 150.0,

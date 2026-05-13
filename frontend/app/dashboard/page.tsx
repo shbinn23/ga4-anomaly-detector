@@ -6,13 +6,14 @@ import { StatusBadge } from "@/components/dashboard/status-badge";
 import { SummaryCards } from "@/components/dashboard/summary-cards";
 import { Card, CardContent } from "@/components/ui/card";
 import { getDashboardData } from "@/lib/api";
-import { buildAnalysisRows, buildSummaryStats, chooseFeaturedAnalysis } from "@/lib/view-models";
+import { buildAnalysisRows, buildDashboardSections, buildSummary } from "@/lib/view-models";
 
 export default async function DashboardPage() {
   const data = await getDashboardData();
-  const stats = buildSummaryStats(data.analyses);
-  const rows = buildAnalysisRows(data.analyses);
-  const featured = chooseFeaturedAnalysis(data.analyses);
+  const sections = buildDashboardSections(data.analyses);
+  const stats = buildSummary(sections);
+  const detectionRows = buildAnalysisRows(sections.detections);
+  const diagnosisRows = buildAnalysisRows(sections.diagnoses);
 
   return (
     <main className="min-h-screen px-5 py-6 md:px-8 lg:px-10">
@@ -49,10 +50,43 @@ export default async function DashboardPage() {
         <SummaryCards stats={stats} />
 
         {data.analyses.length ? (
-          <div className="grid gap-5">
-            <ForecastChart analysis={featured} />
-            <AnalysisTable rows={rows} />
-          </div>
+          <>
+            <section className="grid gap-5">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Step 1</p>
+                <h2 className="serif-heading text-3xl">Detection</h2>
+              </div>
+              {sections.detections.length ? (
+                <>
+                  <ForecastChart analysis={sections.featuredDetection} />
+                  <AnalysisTable rows={detectionRows} title="Detection results" />
+                </>
+              ) : (
+                <EmptyState
+                  title="No detection results"
+                  description="No Step 1 detection analyses were returned by the dashboard API."
+                />
+              )}
+            </section>
+
+            <section className="grid gap-5">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Step 2</p>
+                <h2 className="serif-heading text-3xl">Diagnosis</h2>
+              </div>
+              {sections.diagnoses.length ? (
+                <>
+                  <ForecastChart analysis={sections.featuredDiagnosis} />
+                  <AnalysisTable rows={diagnosisRows} title="Diagnosis results" />
+                </>
+              ) : (
+                <EmptyState
+                  title="No diagnosis results"
+                  description="No Step 2 diagnosis analyses were returned by the dashboard API."
+                />
+              )}
+            </section>
+          </>
         ) : (
           <EmptyState
             title="No analysis results yet"

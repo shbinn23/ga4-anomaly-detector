@@ -4,9 +4,9 @@ import type { SummaryStats } from "@/lib/types";
 
 const labels = [
   ["Total analyses", "totalAnalyses"],
-  ["Anomaly detected", "anomalyCount"],
-  ["Latest result", "latestResultDate"],
-  ["Affected segments", "affectedSegments"],
+  ["Detection anomalies", "detectionAnomalyCount"],
+  ["Diagnosis anomalies", "diagnosisAnomalyCount"],
+  ["Latest anomaly", "latestAnomalyDate"],
 ] as const;
 
 export function SummaryCards({ stats }: { stats: SummaryStats }) {
