@@ -60,12 +60,13 @@ class AnomalyService:
     def run_analysis(self, payload: AnomalyRequest) -> Dict[str, Any]:
         try:
             result = self._analyze_single(payload)
-            self.storage.save(payload.property_id, result.dict())
+            result_dict = result.model_dump(mode="json")
+            self.storage.save(payload.property_id, result_dict)
 
             # 🔥 [수정] 껍데기만 보내던 것을 전체 분석 결과 반환으로 변경
             return {
                 "status": "success",
-                "result": result.dict()
+                "result": result_dict
             }
         except Exception as e:
             logger.error(f"단일 분석 중 오류: {str(e)}")
@@ -77,7 +78,7 @@ class AnomalyService:
             results = []
             for item in payload.properties:
                 result = self._analyze_single(item)
-                data_map[item.property_id] = result.dict()
+                data_map[item.property_id] = result.model_dump(mode="json")
                 results.append({
                     "property_id": item.property_id,
                     "property_name": item.property_name,

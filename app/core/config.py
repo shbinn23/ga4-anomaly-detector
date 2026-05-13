@@ -1,7 +1,10 @@
+from pydantic import ConfigDict
 from pydantic_settings import BaseSettings
 from pathlib import Path
 
 class Settings(BaseSettings):
+    model_config = ConfigDict(env_file=".env", extra="ignore")
+
     PROJECT_NAME: str = "GA4 Anomaly Detector"
 
     # 경로 설정 (절대 경로 보장)
@@ -14,10 +17,6 @@ class Settings(BaseSettings):
 
     # ML 파라미터 (Phase 3 확장을 고려하여 중앙 관리)
     PROPHET_INTERVAL_WIDTH: float = 0.80
-
-    class Config:
-        env_file = ".env"
-        extra = "ignore"
 
 settings = Settings()
 

@@ -136,6 +136,43 @@ def test_sessions_and_ecommerce_use_common_single_metric_flow(monkeypatch):
     ]
 
 
+def test_session_api_response_shape_is_preserved_after_model_dump(monkeypatch):
+    calls = []
+    patch_common_analysis(monkeypatch, calls)
+
+    service = AnomalyService(detector=NoopDetector(), storage=NoopStorage())
+
+    response = service.run_analysis(
+        AnomalyRequest(
+            property_id="session-prop",
+            property_name="Session Prop",
+            target_date="2026-05-02",
+            history_data=[
+                {"date": "2026-05-01", "sessions": 100},
+                {"date": "2026-05-02", "sessions": 110},
+            ],
+        )
+    )
+
+    assert response == {
+        "status": "success",
+        "result": {
+            "property_name": "Session Prop",
+            "is_anomaly": False,
+            "last_sessions": 110,
+            "updated_at": "2026-05-02",
+            "forecast_data": {
+                "ds": ["2026-05-01", "2026-05-02"],
+                "y": [100.0, 110.0],
+                "yhat": [100.0, 100.0],
+                "yhat_lower": [80.0, 80.0],
+                "yhat_upper": [120.0, 120.0],
+                "is_anomaly": [False, False],
+            },
+        },
+    }
+
+
 def test_reset_api_clears_all_analysis_stores(tmp_path):
     storage = JSONStorage()
     storage.path = tmp_path / "results_db.json"

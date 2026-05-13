@@ -27,7 +27,7 @@ def test_generic_request_normalizes_to_single_metric_task():
     assert task.dimensions["eventName"] == "purchase"
     assert task.series[-1].value == 90
     assert task.target_date == "2026-05-03"
-    assert task.analysis_id.startswith("123:ecommerce:eventCount:")
+    assert task.analysis_id.startswith("123:ecommerce:detection:eventCount:")
 
 
 def test_generic_request_rejects_mismatched_target_date():

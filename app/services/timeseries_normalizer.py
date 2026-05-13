@@ -23,6 +23,7 @@ class TimeSeriesNormalizer:
             analysis_id=TimeSeriesNormalizer.build_analysis_id(
                 property_id=payload.property_id,
                 domain=payload.domain,
+                mode=payload.mode,
                 metric_name=payload.metric_name,
                 dimensions=dimensions,
             ),
@@ -49,9 +50,10 @@ class TimeSeriesNormalizer:
     def build_analysis_id(
         property_id: str,
         domain: str,
+        mode: str,
         metric_name: str,
         dimensions: Dict[str, Any],
     ) -> str:
         encoded_dimensions = json.dumps(dimensions, ensure_ascii=False, sort_keys=True)
         digest = hashlib.sha1(encoded_dimensions.encode("utf-8")).hexdigest()[:12]
-        return f"{property_id}:{domain}:{metric_name}:{digest}"
+        return f"{property_id}:{domain}:{mode}:{metric_name}:{digest}"

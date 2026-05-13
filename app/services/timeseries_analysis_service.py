@@ -17,7 +17,7 @@ class TimeSeriesAnalysisService:
     def run_generic_analysis(self, payload: GenericAnalysisRequest) -> Dict[str, Any]:
         task = TimeSeriesNormalizer.from_generic_request(payload)
         result = self.run_single_metric_analysis(task)
-        result_dict = result.model_dump()
+        result_dict = result.model_dump(mode="json")
 
         if self.storage:
             self.storage.save_generic_analysis(result.analysis_id, result_dict)

@@ -28,3 +28,13 @@ def test_legacy_forecast_data_is_recalculated_for_api_model():
     )
 
     assert forecast_data.is_anomaly == [False, True, True]
+
+
+def test_dashboard_keeps_point_anomaly_calculation_in_data_loader():
+    dashboard_source = "dashboard/dashboard.py"
+    with open(dashboard_source, "r", encoding="utf-8") as f:
+        source = f.read()
+
+    assert "calculate_point_anomalies" not in source
+    assert "yhat_lower" not in source
+    assert "yhat_upper" not in source

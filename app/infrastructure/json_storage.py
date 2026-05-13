@@ -14,14 +14,17 @@ class JSONStorage(BaseStorage):
         # settings.DATA_DIR를 사용하여 루트의 /data 폴더를 참조합니다.
         self.path = settings.DATA_DIR / settings.DB_FILE_NAME
 
+    def _write_json(self, path: Path, data: dict):
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=4, default=str)
+
     def save(self, key: str, data: dict):
         try:
             db = self.load_all()
             db[key] = data
             # 디렉토리가 없을 경우를 대비해 생성 시도
             self.path.parent.mkdir(parents=True, exist_ok=True)
-            with open(self.path, "w", encoding="utf-8") as f:
-                json.dump(db, f, ensure_ascii=False, indent=4)
+            self._write_json(self.path, db)
             logger.info(f"Successfully saved data for property: {key}")
         except Exception as e:
             logger.error(f"JSON 저장 실패: {str(e)}")
@@ -43,8 +46,7 @@ class JSONStorage(BaseStorage):
             db = self.load_all()
             db.update(data_map)
             self.path.parent.mkdir(parents=True, exist_ok=True)
-            with open(self.path, "w", encoding="utf-8") as f:
-                json.dump(db, f, ensure_ascii=False, indent=4)
+            self._write_json(self.path, db)
             logger.info(f"Successfully saved batch update for {len(data_map)} properties.")
         except Exception as e:
             logger.error(f"JSON 배치 저장 실패: {str(e)}")
@@ -92,8 +94,7 @@ class JSONStorage(BaseStorage):
             db.update(data)
 
             # 3. 전체 데이터 다시 덮어쓰기 (이제 기존 데이터가 날아가지 않음)
-            with open(path, "w", encoding="utf-8") as f:
-                json.dump(db, f, ensure_ascii=False, indent=4)
+            self._write_json(path, db)
 
             logger.info(f"Successfully updated channel analysis. Total properties in DB: {len(db)}")
         except Exception as e:
@@ -113,8 +114,7 @@ class JSONStorage(BaseStorage):
 
             db[key] = data
 
-            with open(path, "w", encoding="utf-8") as f:
-                json.dump(db, f, ensure_ascii=False, indent=4)
+            self._write_json(path, db)
 
             logger.info(f"Successfully saved generic analysis: {key}")
         except Exception as e:
