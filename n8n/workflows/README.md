@@ -73,21 +73,22 @@ metric_name: eventCount
 dimensions: { eventName }
 ```
 
-## Added Unassigned Traffic Flow
+## Added Unassigned Traffic Branch
 
 ```text
-Existing property list
-  -> Unassigned - Build Detection Properties
-  -> Loop Unassigned Detection
-  -> GA4 Unassigned Detection Report
-  -> Prepare Unassigned Detection Payloads
-  -> POST Unassigned Detection
-  -> Filter Unassigned Detection Alerts
-  -> Loop Unassigned Diagnosis
-  -> GA4 Unassigned Diagnosis Report
-  -> Prepare Unassigned Diagnosis Payload
-  -> POST Unassigned Diagnosis
+[Unassigned] Build Properties
+  -> [Unassigned] GA4 Detection Report
+  -> [Unassigned] Prepare Detection Payload
+  -> [Unassigned] POST Detection
+  -> [Unassigned] Filter should_run_diagnosis
+  -> [Unassigned] GA4 Diagnosis Report
+  -> [Unassigned] Prepare Diagnosis Payload
+  -> [Unassigned] POST Diagnosis
 ```
+
+The Unassigned branch is part of the same monitoring workflow, but it is kept as
+an independent branch from the shared property list. It does not feed into the
+Sessions or Ecommerce branch.
 
 ## Unassigned Detection
 
@@ -146,6 +147,14 @@ It already points all FastAPI calls to:
 
 ```text
 http://api:8000
+```
+
+After import, connect the Google Analytics OAuth credential in these Unassigned
+nodes:
+
+```text
+[Unassigned] GA4 Detection Report
+[Unassigned] GA4 Diagnosis Report
 ```
 
 Local URLs:

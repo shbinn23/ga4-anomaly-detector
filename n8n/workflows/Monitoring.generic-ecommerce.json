@@ -29,7 +29,7 @@
       "name": "HTTP Request",
       "credentials": {
         "googleAnalyticsOAuth2": {
-          "id": "D6XutmOM59kZ1fXk",
+          "id": "ieceYHg2RYukMAsP",
           "name": "Google Analytics account"
         }
       }
@@ -69,7 +69,7 @@
       "name": "Get a report",
       "credentials": {
         "googleAnalyticsOAuth2": {
-          "id": "D6XutmOM59kZ1fXk",
+          "id": "ieceYHg2RYukMAsP",
           "name": "Google Analytics account"
         }
       },
@@ -154,7 +154,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://analyticsdata.googleapis.com/v1beta/properties/{{ $json.propertyId }}:batchRunReports",
+        "url": "=https://analyticsdata.googleapis.com/v1beta/properties/{{ $json.property_id || $json.propertyId }}:batchRunReports",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "googleAnalyticsOAuth2",
         "sendBody": true,
@@ -172,7 +172,7 @@
       "name": "HTTP Request3",
       "credentials": {
         "googleAnalyticsOAuth2": {
-          "id": "D6XutmOM59kZ1fXk",
+          "id": "ieceYHg2RYukMAsP",
           "name": "Google Analytics account"
         }
       }
@@ -218,7 +218,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// JS Node 1: 이상 징후 필터링 및 평탄화(Flattening)\nconst allBatches = items; // 9개의 배치 묶음\nconst anomalyProperties = [];\n\nallBatches.forEach(batch => {\n    const results = batch.json.results || [];\n    results.forEach(res => {\n        if (res.is_anomaly === true) {\n            anomalyProperties.push({\n                json: {\n                    propertyId: res.property_id,\n                    propertyName: res.property_name\n                }\n            });\n        }\n    });\n});\n\nreturn anomalyProperties;"
+        "jsCode": "// JS Node 1: 이상 징후 필터링 및 평탄화(Flattening)\nconst allBatches = items; // 9개의 배치 묶음\nconst anomalyProperties = [];\n\nallBatches.forEach(batch => {\n    const results = batch.json.results || [];\n    results.forEach(res => {\n        if (res.is_anomaly === true) {\n            const propertyId = res.property_id;\n            anomalyProperties.push({\n                json: {\n                    property_id: propertyId,\n                    propertyId,\n                    propertyName: res.property_name\n                }\n            });\n        }\n    });\n});\n\nreturn anomalyProperties;"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -233,7 +233,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://analyticsdata.googleapis.com/v1beta/properties/{{ $json.propertyId }}:batchRunReports",
+        "url": "=https://analyticsdata.googleapis.com/v1beta/properties/{{ $json.property_id || $json.propertyId }}:batchRunReports",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "googleAnalyticsOAuth2",
         "sendBody": true,
@@ -251,7 +251,7 @@
       "name": "HTTP Request4",
       "credentials": {
         "googleAnalyticsOAuth2": {
-          "id": "D6XutmOM59kZ1fXk",
+          "id": "ieceYHg2RYukMAsP",
           "name": "Google Analytics account"
         }
       }
@@ -276,7 +276,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// 1. 타겟 계정 ID 및 제외 설정\nconst targetAccountId = \"101423321\";\nconst excludedProperties = [\n    \"properties/338476357\", \"properties/405383368\", \"properties/396589406\", \n    \"properties/389068544\", \"properties/396587111\", \"properties/396596928\",\n    \"properties/396611752\", \"properties/399792463\", \"properties/404766492\", \n    \"properties/404770191\", \"properties/404777182\", \"properties/404783166\",\n    \"properties/405913800\", \"properties/405921879\", \"properties/244753299\", \n    \"properties/290653701\", \"properties/357136492\", \"properties/433447824\",\n    \"properties/359782962\", \"properties/441817328\", \"properties/429284171\", \n    \"properties/436477471\", \"properties/486365237\", \"properties/486431162\",\n    \"properties/489666261\", \"properties/493901606\", \"properties/510907920\", \n    \"properties/517283074\", \"properties/492787484\"\n];\n\nconst results = [];\nconst summaries = items[0].json.accountSummaries || [];\n\nfor (const accountSummary of summaries) {\n  const currentAccountId = accountSummary.account.split('/')[1];\n  if (currentAccountId !== targetAccountId) continue;\n\n  if (accountSummary.propertySummaries) {\n    for (const property of accountSummary.propertySummaries) {\n      const propertyPath = property.property;\n      const displayName = property.displayName;\n\n      if (excludedProperties.includes(propertyPath)) continue;\n      if (displayName.toLowerCase().includes('subproperty')) continue;\n\n      results.push({\n        json: {\n          accountId: currentAccountId,\n          propertyId: propertyPath.split('/')[1],\n          propertyName: displayName\n        }\n      });\n    }\n  }\n}\n\nreturn results;"
+        "jsCode": "// 1. 타겟 계정 ID 및 제외 설정\nconst targetAccountId = \"101423321\";\nconst excludedProperties = [\n    \"properties/338476357\", \"properties/405383368\", \"properties/396589406\", \n    \"properties/389068544\", \"properties/396587111\", \"properties/396596928\",\n    \"properties/396611752\", \"properties/399792463\", \"properties/404766492\", \n    \"properties/404770191\", \"properties/404777182\", \"properties/404783166\",\n    \"properties/405913800\", \"properties/405921879\", \"properties/244753299\", \n    \"properties/290653701\", \"properties/357136492\", \"properties/433447824\",\n    \"properties/359782962\", \"properties/441817328\", \"properties/429284171\", \n    \"properties/436477471\", \"properties/486365237\", \"properties/486431162\",\n    \"properties/489666261\", \"properties/493901606\", \"properties/510907920\", \n    \"properties/517283074\", \"properties/492787484\"\n];\n\nconst results = [];\nconst summaries = items[0].json.accountSummaries || [];\n\nfor (const accountSummary of summaries) {\n  const currentAccountId = accountSummary.account.split('/')[1];\n  if (currentAccountId !== targetAccountId) continue;\n\n  if (accountSummary.propertySummaries) {\n    for (const property of accountSummary.propertySummaries) {\n      const propertyPath = property.property;\n      const displayName = property.displayName;\n      const propertyId = propertyPath.split('/')[1];\n\n      if (excludedProperties.includes(propertyPath)) continue;\n      if (displayName.toLowerCase().includes('subproperty')) continue;\n\n      results.push({\n        json: {\n          accountId: currentAccountId,\n          property_id: propertyId,\n          propertyId,\n          propertyName: displayName\n        }\n      });\n    }\n  }\n}\n\nreturn results;"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -319,7 +319,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Build ecommerce detection targets from the incoming property list.\n// Keep sessions workflow untouched; this branch prepares generic single-metric tasks.\nconst targetEvents = [\"view_item\", \"add_to_cart\", \"begin_checkout\", \"purchase\"];\nconst properties = $input.all();\n\nreturn properties.map(item => ({\n  json: {\n    propertyId: item.json.propertyId,\n    propertyName: item.json.propertyName,\n    targetEvents,\n  }\n}));"
+        "jsCode": "// Build ecommerce detection targets from the incoming property list.\n// Keep sessions workflow untouched; this branch prepares generic single-metric tasks.\nconst targetEvents = [\"view_item\", \"add_to_cart\", \"begin_checkout\", \"purchase\"];\nconst properties = $input.all();\n\nreturn properties\n  .map(item => {\n    const propertyId = item.json.property_id || item.json.propertyId;\n    return {\n      json: {\n        property_id: propertyId,\n        propertyId,\n        propertyName: item.json.propertyName,\n        targetEvents,\n      }\n    };\n  })\n  .filter(item => item.json.property_id);"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -347,7 +347,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://analyticsdata.googleapis.com/v1beta/properties/{{ $json.propertyId }}:batchRunReports",
+        "url": "=https://analyticsdata.googleapis.com/v1beta/properties/{{ $json.property_id || $json.propertyId }}:batchRunReports",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "googleAnalyticsOAuth2",
         "sendBody": true,
@@ -365,14 +365,14 @@
       "name": "GA4 Ecommerce Detection Report",
       "credentials": {
         "googleAnalyticsOAuth2": {
-          "id": "D6XutmOM59kZ1fXk",
+          "id": "ieceYHg2RYukMAsP",
           "name": "Google Analytics account"
         }
       }
     },
     {
       "parameters": {
-        "jsCode": "const loopItems = $('Loop Ecommerce Detection').all();\n\nreturn items.map((item, index) => {\n  const source = loopItems[index].json;\n  const reports = item.json.reports || [];\n  const rows = reports[0]?.rows || [];\n\n  const series = rows.map(row => ({\n    date: [\n      row.dimensionValues[0].value.slice(0, 4),\n      row.dimensionValues[0].value.slice(4, 6),\n      row.dimensionValues[0].value.slice(6, 8),\n    ].join('-'),\n    value: parseFloat(row.metricValues[0].value || '0'),\n  })).sort((a, b) => a.date.localeCompare(b.date));\n\n  return {\n    json: {\n      domain: 'ecommerce',\n      mode: 'detection',\n      property_id: source.propertyId,\n      property_name: source.propertyName,\n      metric_name: 'eventCount',\n      dimensions: {},\n      target_date: series.length ? series[series.length - 1].date : undefined,\n      target_events: source.targetEvents,\n      series,\n    }\n  };\n}).filter(item => item.json.series.length >= 2);"
+        "jsCode": "const loopItems = $('Loop Ecommerce Detection').all();\n\nreturn items.map((item, index) => {\n  const source = loopItems[index].json;\n  const propertyId = source.property_id || source.propertyId;\n  const reports = item.json.reports || [];\n  const rows = reports[0]?.rows || [];\n\n  const series = rows.map(row => ({\n    date: [\n      row.dimensionValues[0].value.slice(0, 4),\n      row.dimensionValues[0].value.slice(4, 6),\n      row.dimensionValues[0].value.slice(6, 8),\n    ].join('-'),\n    value: parseFloat(row.metricValues[0].value || '0'),\n  })).sort((a, b) => a.date.localeCompare(b.date));\n\n  return {\n    json: {\n      domain: 'ecommerce',\n      mode: 'detection',\n      property_id: propertyId,\n      property_name: source.propertyName,\n      metric_name: 'eventCount',\n      dimensions: {},\n      target_date: series.length ? series[series.length - 1].date : undefined,\n      target_events: source.targetEvents,\n      series,\n    }\n  };\n}).filter(item => item.json.property_id && item.json.series.length >= 2);"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -403,7 +403,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const anomalyProperties = [];\n\nfor (const item of items) {\n  if (item.json.is_anomaly !== true) continue;\n\n  const result = item.json.result || {};\n  const nextAction = item.json.next_action || {};\n\n  anomalyProperties.push({\n    json: {\n      propertyId: result.property_id || nextAction.property_id,\n      propertyName: result.property_name || result.property_id || nextAction.property_id,\n      metricName: result.metric_name || nextAction.metric_name || 'eventCount',\n      targetEvents: nextAction.target_events || [],\n    }\n  });\n}\n\nreturn anomalyProperties;"
+        "jsCode": "const anomalyProperties = [];\n\nfor (const item of items) {\n  if (item.json.is_anomaly !== true) continue;\n\n  const result = item.json.result || {};\n  const nextAction = item.json.next_action || {};\n  const propertyId = result.property_id || nextAction.property_id || item.json.property_id || item.json.propertyId;\n  if (!propertyId) continue;\n\n  anomalyProperties.push({\n    json: {\n      property_id: propertyId,\n      propertyId,\n      propertyName: result.property_name || item.json.property_name || propertyId,\n      metricName: result.metric_name || nextAction.metric_name || 'eventCount',\n      targetEvents: nextAction.target_events || [],\n    }\n  });\n}\n\nreturn anomalyProperties;"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -431,7 +431,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://analyticsdata.googleapis.com/v1beta/properties/{{ $json.propertyId }}:batchRunReports",
+        "url": "=https://analyticsdata.googleapis.com/v1beta/properties/{{ $json.property_id || $json.propertyId }}:batchRunReports",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "googleAnalyticsOAuth2",
         "sendBody": true,
@@ -449,14 +449,14 @@
       "name": "GA4 Ecommerce Diagnosis Report",
       "credentials": {
         "googleAnalyticsOAuth2": {
-          "id": "D6XutmOM59kZ1fXk",
+          "id": "ieceYHg2RYukMAsP",
           "name": "Google Analytics account"
         }
       }
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Loop Ecommerce Diagnosis').item.json;\nconst report = items[0].json.reports?.[0] || {};\nconst rows = report.rows || [];\nconst byEvent = {};\n\nfor (const row of rows) {\n  const date = [\n    row.dimensionValues[0].value.slice(0, 4),\n    row.dimensionValues[0].value.slice(4, 6),\n    row.dimensionValues[0].value.slice(6, 8),\n  ].join('-');\n  const eventName = row.dimensionValues[1].value;\n  const value = parseFloat(row.metricValues[0].value || '0');\n\n  if (!byEvent[eventName]) byEvent[eventName] = [];\n  byEvent[eventName].push({ date, value });\n}\n\nreturn Object.entries(byEvent)\n  .map(([eventName, series]) => ({\n    json: {\n      domain: 'ecommerce',\n      mode: 'diagnosis',\n      property_id: source.propertyId,\n      property_name: source.propertyName,\n      metric_name: source.metricName || 'eventCount',\n      dimensions: { eventName },\n      target_date: series.length ? series[series.length - 1].date : undefined,\n      series: series.sort((a, b) => a.date.localeCompare(b.date)),\n    }\n  }))\n  .filter(item => item.json.series.length >= 2);"
+        "jsCode": "const source = $('Loop Ecommerce Diagnosis').item.json;\nconst propertyId = source.property_id || source.propertyId;\nconst report = items[0].json.reports?.[0] || {};\nconst rows = report.rows || [];\nconst byEvent = {};\n\nfor (const row of rows) {\n  const date = [\n    row.dimensionValues[0].value.slice(0, 4),\n    row.dimensionValues[0].value.slice(4, 6),\n    row.dimensionValues[0].value.slice(6, 8),\n  ].join('-');\n  const eventName = row.dimensionValues[1].value;\n  const value = parseFloat(row.metricValues[0].value || '0');\n\n  if (!byEvent[eventName]) byEvent[eventName] = [];\n  byEvent[eventName].push({ date, value });\n}\n\nreturn Object.entries(byEvent)\n  .map(([eventName, series]) => ({\n    json: {\n      domain: 'ecommerce',\n      mode: 'diagnosis',\n      property_id: propertyId,\n      property_name: source.propertyName,\n      metric_name: source.metricName || 'eventCount',\n      dimensions: { eventName },\n      target_date: series.length ? series[series.length - 1].date : undefined,\n      series: series.sort((a, b) => a.date.localeCompare(b.date)),\n    }\n  }))\n  .filter(item => item.json.property_id && item.json.series.length >= 2);"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -487,50 +487,36 @@
     },
     {
       "parameters": {
-        "content": "Unassigned Traffic flow\n\nStep 1 Detection: date + sessionDefaultChannelGroup + sessions raw rows.\nBackend derives unassigned_session_share.\n\nStep 2 Diagnosis only when should_run_diagnosis === true.\nGA4 filter: sessionDefaultChannelGroup == Unassigned.\n\nFastAPI: /api/v1/analyze/themes/unassigned-traffic/*",
-        "height": 300,
-        "width": 460
+        "content": "## Unassigned Traffic Monitoring\nDetection: date + sessionDefaultChannelGroup + sessions\nDiagnosis: date + sessionSourceMedium + sessions filtered to Unassigned\nBackend derives unassigned_session_share from raw rows.",
+        "height": 240,
+        "width": 360
       },
+      "id": "1ea92124-b283-4f01-8d7d-5364817c09c4",
+      "name": "[Unassigned] Traffic Monitoring",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        1760,
-        1360
-      ],
-      "id": "b172d034-6a7c-46bb-acb9-69116a0656be",
-      "name": "Sticky Note - Unassigned Traffic"
+        460,
+        1120
+      ]
     },
     {
       "parameters": {
-        "jsCode": "// Build Unassigned Traffic detection targets from the existing property list.\n// Backend calculates unassigned_session_share from raw GA4 rows.\nconst properties = $input.all();\n\nreturn properties.map(item => ({\n  json: {\n    propertyId: item.json.propertyId,\n    propertyName: item.json.propertyName,\n  }\n}));"
+        "jsCode": "// Prepare properties for the Unassigned Traffic branch without changing other branches.\nconst properties = $input.all();\n\nreturn properties\n  .map(item => {\n    const propertyId = item.json.property_id || item.json.propertyId;\n    return {\n      json: {\n        property_id: propertyId,\n        propertyId,\n        propertyName: item.json.propertyName,\n        accountId: item.json.accountId,\n      },\n    };\n  })\n  .filter(item => item.json.property_id);"
       },
+      "id": "03a58a5b-5791-4fc2-9e27-3b9abd300555",
+      "name": "[Unassigned] Build Properties",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1760,
-        1320
-      ],
-      "id": "c0941b45-3ff4-4516-94c3-eca804d5b6ad",
-      "name": "Unassigned - Build Detection Properties"
-    },
-    {
-      "parameters": {
-        "batchSize": 5,
-        "options": {}
-      },
-      "type": "n8n-nodes-base.splitInBatches",
-      "typeVersion": 3,
-      "position": [
-        1984,
-        1320
-      ],
-      "id": "02e94a88-84b2-42f8-9d5c-7162738879c9",
-      "name": "Loop Unassigned Detection"
+        720,
+        1180
+      ]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://analyticsdata.googleapis.com/v1beta/properties/{{ $json.propertyId }}:batchRunReports",
+        "url": "=https://analyticsdata.googleapis.com/v1beta/properties/{{ $json.property_id || $json.propertyId }}:batchRunReports",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "{\n  \"requests\": [\n    {\n      \"dimensions\": [\n        { \"name\": \"date\" },\n        { \"name\": \"sessionDefaultChannelGroup\" }\n      ],\n      \"metrics\": [\n        { \"name\": \"sessions\" }\n      ],\n      \"dateRanges\": [\n        { \"startDate\": \"90daysAgo\", \"endDate\": \"yesterday\" }\n      ],\n      \"orderBys\": [\n        { \"dimension\": { \"dimensionName\": \"date\" }, \"desc\": false },\n        { \"dimension\": { \"dimensionName\": \"sessionDefaultChannelGroup\" }, \"desc\": false }\n      ],\n      \"keepEmptyRows\": true\n    }\n  ]\n}",
@@ -538,27 +524,33 @@
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "googleAnalyticsOAuth2"
       },
+      "id": "0b0418ca-b081-47e7-8918-f1e9d8b2820d",
+      "name": "[Unassigned] GA4 Detection Report",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.4,
+      "typeVersion": 4.2,
+      "credentials": {
+        "googleAnalyticsOAuth2": {
+          "id": "ieceYHg2RYukMAsP",
+          "name": "Google Analytics account"
+        }
+      },
       "position": [
-        2208,
-        1320
-      ],
-      "id": "90d007f6-8cc3-4244-bbc6-1e29dbf1ec5f",
-      "name": "GA4 Unassigned Detection Report"
+        1240,
+        1180
+      ]
     },
     {
       "parameters": {
-        "jsCode": "const loopItems = $('Loop Unassigned Detection').all();\n\nreturn items.map((item, index) => {\n  const source = loopItems[index].json;\n  const reports = item.json.reports || [];\n  const rows = reports[0]?.rows || [];\n\n  const normalizedRows = rows.map(row => {\n    const dateValue = row.dimensionValues?.[0]?.value || '';\n    return {\n      date: [\n        dateValue.slice(0, 4),\n        dateValue.slice(4, 6),\n        dateValue.slice(6, 8),\n      ].join('-'),\n      sessionDefaultChannelGroup: row.dimensionValues?.[1]?.value ?? null,\n      sessions: parseFloat(row.metricValues?.[0]?.value || '0'),\n    };\n  }).filter(row => row.date.length === 10)\n    .sort((a, b) => a.date.localeCompare(b.date));\n\n  if (normalizedRows.length === 0) return null;\n\n  return {\n    json: {\n      property_id: source.propertyId,\n      property_name: source.propertyName,\n      date_start: normalizedRows[0].date,\n      date_end: normalizedRows[normalizedRows.length - 1].date,\n      target_date: normalizedRows[normalizedRows.length - 1].date,\n      rows: normalizedRows,\n    }\n  };\n}).filter(Boolean);"
+        "jsCode": "const source = $('Loop Unassigned Detection').item.json;\nconst propertyId = source.property_id || source.propertyId;\nconst report = items[0].json.reports?.[0] || {};\nconst rows = report.rows || [];\n\nconst payloadRows = rows.map(row => ({\n  date: row.dimensionValues[0]?.value,\n  sessionDefaultChannelGroup: row.dimensionValues[1]?.value,\n  sessions: parseFloat(row.metricValues[0]?.value || '0'),\n})).filter(row => row.date);\n\nif (!propertyId || payloadRows.length === 0) return [];\n\nconst sortedDates = [...new Set(payloadRows.map(row => row.date))].sort();\n\nreturn [{\n  json: {\n    property_id: propertyId,\n    property_name: source.propertyName,\n    corporation: source.accountId,\n    date_start: sortedDates[0],\n    date_end: sortedDates[sortedDates.length - 1],\n    target_date: sortedDates[sortedDates.length - 1],\n    rows: payloadRows,\n  },\n}];"
       },
+      "id": "84ccc80a-30bf-4d64-8c98-a168709450bd",
+      "name": "[Unassigned] Prepare Detection Payload",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2432,
-        1320
-      ],
-      "id": "25e488dc-cd62-4757-abb0-1e52d9ea9da4",
-      "name": "Prepare Unassigned Detection Payloads"
+        1500,
+        1180
+      ]
     },
     {
       "parameters": {
@@ -569,46 +561,32 @@
         "jsonBody": "={{ $json }}",
         "options": {}
       },
+      "id": "bb9af388-fb94-4472-8137-96cfab947d3c",
+      "name": "[Unassigned] POST Detection",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.4,
+      "typeVersion": 4.2,
       "position": [
-        2656,
-        1320
-      ],
-      "id": "12d7696b-f6e3-443b-836f-b5c53f7f6f19",
-      "name": "POST Unassigned Detection"
+        1760,
+        1180
+      ]
     },
     {
       "parameters": {
-        "jsCode": "const targets = [];\n\nfor (const item of items) {\n  if (item.json.should_run_diagnosis !== true) continue;\n\n  const result = item.json.result || {};\n  targets.push({\n    json: {\n      propertyId: result.property_id || item.json.property_id,\n      propertyName: result.property_name || result.property_id || item.json.property_id,\n      targetDate: item.json.target_date || result.target_date,\n      groupKey: item.json.group_key || result.metadata?.group_key,\n    }\n  });\n}\n\nreturn targets;"
+        "jsCode": "const diagnosisTargets = [];\n\nfor (const item of items) {\n  if (item.json.should_run_diagnosis !== true) continue;\n\n  const result = item.json.result || {};\n  const metadata = result.metadata || {};\n  const propertyId = item.json.property_id || result.property_id;\n  if (!propertyId) continue;\n\n  diagnosisTargets.push({\n    json: {\n      property_id: propertyId,\n      propertyId,\n      propertyName: item.json.property_name || result.property_name || propertyId,\n      corporation: item.json.corporation || metadata.corporation,\n      targetDate: item.json.target_date || result.target_date,\n      groupKey: item.json.group_key || metadata.group_key,\n    },\n  });\n}\n\nreturn diagnosisTargets;"
       },
+      "id": "57ceb918-8598-4c60-9717-8b0be9efae9d",
+      "name": "[Unassigned] Filter should_run_diagnosis",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2208,
-        1640
-      ],
-      "id": "8fcbf50b-2267-46de-8015-6287385a4105",
-      "name": "Filter Unassigned Detection Alerts"
-    },
-    {
-      "parameters": {
-        "batchSize": 1,
-        "options": {}
-      },
-      "type": "n8n-nodes-base.splitInBatches",
-      "typeVersion": 3,
-      "position": [
-        2432,
-        1640
-      ],
-      "id": "cb55fe28-22a2-40e7-881f-233e8ef051c9",
-      "name": "Loop Unassigned Diagnosis"
+        2020,
+        1360
+      ]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://analyticsdata.googleapis.com/v1beta/properties/{{ $json.propertyId }}:batchRunReports",
+        "url": "=https://analyticsdata.googleapis.com/v1beta/properties/{{ $json.property_id || $json.propertyId }}:batchRunReports",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "{\n  \"requests\": [\n    {\n      \"dimensions\": [\n        { \"name\": \"date\" },\n        { \"name\": \"sessionSourceMedium\" }\n      ],\n      \"metrics\": [\n        { \"name\": \"sessions\" }\n      ],\n      \"dateRanges\": [\n        { \"startDate\": \"90daysAgo\", \"endDate\": \"yesterday\" }\n      ],\n      \"dimensionFilter\": {\n        \"filter\": {\n          \"fieldName\": \"sessionDefaultChannelGroup\",\n          \"stringFilter\": {\n            \"matchType\": \"EXACT\",\n            \"value\": \"Unassigned\"\n          }\n        }\n      },\n      \"orderBys\": [\n        { \"dimension\": { \"dimensionName\": \"date\" }, \"desc\": false },\n        { \"dimension\": { \"dimensionName\": \"sessionSourceMedium\" }, \"desc\": false }\n      ],\n      \"keepEmptyRows\": true\n    }\n  ]\n}",
@@ -616,27 +594,33 @@
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "googleAnalyticsOAuth2"
       },
+      "id": "4354d558-5fd0-4d10-8398-ce3f40ca23c1",
+      "name": "[Unassigned] GA4 Diagnosis Report",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.4,
+      "typeVersion": 4.2,
+      "credentials": {
+        "googleAnalyticsOAuth2": {
+          "id": "ieceYHg2RYukMAsP",
+          "name": "Google Analytics account"
+        }
+      },
       "position": [
-        2656,
-        1640
-      ],
-      "id": "7e97c801-f8f2-4ddc-91bb-9f7318337787",
-      "name": "GA4 Unassigned Diagnosis Report"
+        2280,
+        1180
+      ]
     },
     {
       "parameters": {
-        "jsCode": "const source = $('Loop Unassigned Diagnosis').item.json;\nconst report = items[0].json.reports?.[0] || {};\nconst rows = report.rows || [];\n\nconst normalizedRows = rows.map(row => {\n  const dateValue = row.dimensionValues?.[0]?.value || '';\n  return {\n    date: [\n      dateValue.slice(0, 4),\n      dateValue.slice(4, 6),\n      dateValue.slice(6, 8),\n    ].join('-'),\n    sessionSourceMedium: row.dimensionValues?.[1]?.value ?? null,\n    sessions: parseFloat(row.metricValues?.[0]?.value || '0'),\n  };\n}).filter(row => row.date.length === 10)\n  .sort((a, b) => a.date.localeCompare(b.date));\n\nif (normalizedRows.length === 0) return [];\n\nreturn [{\n  json: {\n    property_id: source.propertyId,\n    property_name: source.propertyName,\n    date_start: normalizedRows[0].date,\n    date_end: normalizedRows[normalizedRows.length - 1].date,\n    target_date: source.targetDate || normalizedRows[normalizedRows.length - 1].date,\n    parent_group_key: source.groupKey,\n    rows: normalizedRows,\n  }\n}];"
+        "jsCode": "const source = $('Loop Unassigned Diagnosis').item.json;\nconst propertyId = source.property_id || source.propertyId;\nconst report = items[0].json.reports?.[0] || {};\nconst rows = report.rows || [];\n\nconst payloadRows = rows.map(row => ({\n  date: row.dimensionValues[0]?.value,\n  sessionSourceMedium: row.dimensionValues[1]?.value,\n  sessions: parseFloat(row.metricValues[0]?.value || '0'),\n})).filter(row => row.date);\n\nif (!propertyId || payloadRows.length === 0) return [];\n\nconst sortedDates = [...new Set(payloadRows.map(row => row.date))].sort();\n\nreturn [{\n  json: {\n    property_id: propertyId,\n    property_name: source.propertyName,\n    corporation: source.corporation,\n    target_date: source.targetDate || sortedDates[sortedDates.length - 1],\n    date_start: sortedDates[0],\n    date_end: sortedDates[sortedDates.length - 1],\n    parent_group_key: source.groupKey,\n    rows: payloadRows,\n  },\n}];"
       },
+      "id": "70df5bb8-998e-48c8-b520-7fd6f6382364",
+      "name": "[Unassigned] Prepare Diagnosis Payload",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2880,
-        1640
-      ],
-      "id": "1d590e7b-0b60-4eee-9f4c-f1fc6aa1ce05",
-      "name": "Prepare Unassigned Diagnosis Payload"
+        2540,
+        1180
+      ]
     },
     {
       "parameters": {
@@ -647,14 +631,42 @@
         "jsonBody": "={{ $json }}",
         "options": {}
       },
+      "id": "5038b831-4566-445b-a8b5-6605dfd03aa0",
+      "name": "[Unassigned] POST Diagnosis",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.4,
+      "typeVersion": 4.2,
       "position": [
-        3104,
-        1640
-      ],
-      "id": "687abc81-7a8b-4435-bdc9-a1c1c8372f50",
-      "name": "POST Unassigned Diagnosis"
+        2800,
+        1180
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 5,
+        "options": {}
+      },
+      "id": "1c1e0a2a-1bfc-440a-ad0a-ae2bd0d43c43",
+      "name": "Loop Unassigned Detection",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        980,
+        1180
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "b874e4ec-527d-47c4-8640-23b4a57fbc37",
+      "name": "Loop Unassigned Diagnosis",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        2020,
+        1180
+      ]
     }
   ],
   "pinData": {},
@@ -697,16 +709,6 @@
         [
           {
             "node": "Loop Over Items1",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Ecommerce - Build Detection Properties",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Unassigned - Build Detection Properties",
             "type": "main",
             "index": 0
           }
@@ -830,6 +832,16 @@
         [
           {
             "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "[Unassigned] Build Properties",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Ecommerce - Build Detection Properties",
             "type": "main",
             "index": 0
           }
@@ -965,11 +977,77 @@
         ]
       ]
     },
-    "Unassigned - Build Detection Properties": {
+    "[Unassigned] Build Properties": {
       "main": [
         [
           {
             "node": "Loop Unassigned Detection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[Unassigned] GA4 Detection Report": {
+      "main": [
+        [
+          {
+            "node": "[Unassigned] Prepare Detection Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[Unassigned] Prepare Detection Payload": {
+      "main": [
+        [
+          {
+            "node": "[Unassigned] POST Detection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[Unassigned] POST Detection": {
+      "main": [
+        [
+          {
+            "node": "Loop Unassigned Detection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[Unassigned] Filter should_run_diagnosis": {
+      "main": [
+        [
+          {
+            "node": "Loop Unassigned Diagnosis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[Unassigned] GA4 Diagnosis Report": {
+      "main": [
+        [
+          {
+            "node": "[Unassigned] Prepare Diagnosis Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[Unassigned] Prepare Diagnosis Payload": {
+      "main": [
+        [
+          {
+            "node": "[Unassigned] POST Diagnosis",
             "type": "main",
             "index": 0
           }
@@ -980,58 +1058,14 @@
       "main": [
         [
           {
-            "node": "Filter Unassigned Detection Alerts",
+            "node": "[Unassigned] Filter should_run_diagnosis",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "GA4 Unassigned Detection Report",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "GA4 Unassigned Detection Report": {
-      "main": [
-        [
-          {
-            "node": "Prepare Unassigned Detection Payloads",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Prepare Unassigned Detection Payloads": {
-      "main": [
-        [
-          {
-            "node": "POST Unassigned Detection",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "POST Unassigned Detection": {
-      "main": [
-        [
-          {
-            "node": "Loop Unassigned Detection",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Filter Unassigned Detection Alerts": {
-      "main": [
-        [
-          {
-            "node": "Loop Unassigned Diagnosis",
+            "node": "[Unassigned] GA4 Detection Report",
             "type": "main",
             "index": 0
           }
@@ -1043,36 +1077,14 @@
         [],
         [
           {
-            "node": "GA4 Unassigned Diagnosis Report",
+            "node": "[Unassigned] GA4 Diagnosis Report",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "GA4 Unassigned Diagnosis Report": {
-      "main": [
-        [
-          {
-            "node": "Prepare Unassigned Diagnosis Payload",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Prepare Unassigned Diagnosis Payload": {
-      "main": [
-        [
-          {
-            "node": "POST Unassigned Diagnosis",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "POST Unassigned Diagnosis": {
+    "[Unassigned] POST Diagnosis": {
       "main": [
         [
           {

@@ -6,6 +6,9 @@
   <component name="ChangeListManager">
     <list default="true" id="abe48099-cf4e-4fe5-8b4c-75190f2324d5" name="Changes" comment="4/8">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/n8n/workflows/Monitoring.generic-ecommerce.json" beforeDir="false" afterPath="$PROJECT_DIR$/n8n/workflows/Monitoring.generic-ecommerce.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/n8n/workflows/Monitoring.local-docker.json" beforeDir="false" afterPath="$PROJECT_DIR$/n8n/workflows/Monitoring.local-docker.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/n8n/workflows/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/n8n/workflows/README.md" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -43,39 +46,39 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;Python.dashboard.executor&quot;: &quot;Run&quot;,
-    &quot;Python.main.executor&quot;: &quot;Run&quot;,
-    &quot;Python.test_run.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
-    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/Users/shbinn/dev/ga4-anomaly-detector/data&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;project.structure.last.edited&quot;: &quot;Project&quot;,
-    &quot;project.structure.proportion&quot;: &quot;0.15&quot;,
-    &quot;project.structure.side.proportion&quot;: &quot;0.3321839&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.pluginManager&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "Python.dashboard.executor": "Run",
+    "Python.main.executor": "Run",
+    "Python.test_run.executor": "Run",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
+    "git-widget-placeholder": "generic-timeseries-infra",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "/Users/shbinn/dev/ga4-anomaly-detector",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "project.structure.last.edited": "Project",
+    "project.structure.proportion": "0.15",
+    "project.structure.side.proportion": "0.3321839",
+    "settings.editor.selected.configurable": "preferences.pluginManager",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$" />
+      <recent name="$PROJECT_DIR$/n8n/workflows" />
       <recent name="$PROJECT_DIR$/data" />
       <recent name="C:\develop\git\ga4-anomaly-detector" />
       <recent name="C:\develop\git\ga4-anomaly-detector\app\services" />
-      <recent name="C:\develop\git\ga4-anomaly-detector\app\ml" />
-      <recent name="C:\develop\git\ga4-anomaly-detector\app\infrastructure" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
       <recent name="C:\develop\git\ga4-anomaly-detector\dashboard" />
@@ -194,6 +197,7 @@
       <workItem from="1777739105366" duration="543000" />
       <workItem from="1777868051157" duration="15500000" />
       <workItem from="1777948288456" duration="1528000" />
+      <workItem from="1778630871266" duration="19656000" />
     </task>
     <task id="LOCAL-00001" summary="test">
       <option name="closed" value="true" />
