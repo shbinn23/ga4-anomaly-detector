@@ -1,10 +1,11 @@
 import gc
-import pandas as pd
 import logging
 from typing import Dict, Any
-from ..domain.schemas import AnomalyRequest, BatchAnomalyRequest, AnalysisResult, ForecastData, ChannelUpdateTask
+from ..domain.schemas import AnomalyRequest, BatchAnomalyRequest, AnalysisResult as SessionAnalysisResult, ForecastData, ChannelUpdateTask
+from ..domain.timeseries import AnalysisResult, AnalysisTask, TimeSeriesPoint
 from ..ml.base_detector import BaseDetector
 from ..infrastructure.json_storage import JSONStorage
+from .timeseries_analysis_service import TimeSeriesAnalysisService
 
 logger = logging.getLogger(__name__)
 
@@ -12,38 +13,49 @@ class AnomalyService:
     def __init__(self, detector: BaseDetector, storage: JSONStorage):
         self.detector = detector
         self.storage = storage
+        self.timeseries_service = TimeSeriesAnalysisService(detector=detector)
 
-    def _analyze_single(self, payload: AnomalyRequest) -> AnalysisResult:
+    def _analyze_single(self, payload: AnomalyRequest) -> SessionAnalysisResult:
         """단일 Property에 대한 Prophet 분석을 수행하고 결과를 반환합니다. 저장은 호출자가 담당합니다."""
-        df = pd.DataFrame([item.dict() for item in payload.history_data])
-        df.rename(columns={'date': 'ds', 'sessions': 'y'}, inplace=True)
-        df['ds'] = pd.to_datetime(df['ds'])
-
-        forecast = self.detector.train_and_predict(df)
-
-        target_actual = df['y'].iloc[-1]
-        target_lower = forecast['yhat_lower'].iloc[-1]
-        target_upper = forecast['yhat_upper'].iloc[-1]
-
-        is_anomaly = self.detector.check_anomaly(
-            actual=target_actual,
-            lower=target_lower,
-            upper=target_upper
-        )
-
-        return AnalysisResult(
+        task = AnalysisTask(
+            analysis_id=payload.property_id,
+            domain="sessions",
+            mode="detection",
+            property_id=payload.property_id,
             property_name=payload.property_name,
-            is_anomaly=is_anomaly,
-            last_sessions=int(target_actual),
-            updated_at=payload.target_date,
+            metric_name="sessions",
+            dimensions={},
+            series=[
+                TimeSeriesPoint(date=item.date, value=item.sessions)
+                for item in payload.history_data
+            ],
+            target_date=payload.target_date,
+        )
+        result = self.timeseries_service.run_single_metric_analysis(task)
+        return self._to_session_result(result)
+
+    def _to_session_result(self, result: AnalysisResult) -> SessionAnalysisResult:
+        return SessionAnalysisResult(
+            property_name=result.property_name or "",
+            is_anomaly=result.is_anomaly,
+            last_sessions=int(result.actual_value),
+            updated_at=result.target_date,
             forecast_data=ForecastData(
-                ds=forecast['ds'].dt.strftime('%Y-%m-%d').tolist(),
-                y=df['y'].tolist(),
-                yhat=forecast['yhat'].round(2).tolist(),
-                yhat_lower=forecast['yhat_lower'].round(2).tolist(),
-                yhat_upper=forecast['yhat_upper'].round(2).tolist()
+                ds=result.forecast_data["ds"],
+                y=result.forecast_data["y"],
+                yhat=result.forecast_data["yhat"],
+                yhat_lower=result.forecast_data["yhat_lower"],
+                yhat_upper=result.forecast_data["yhat_upper"],
+                is_anomaly=result.forecast_data["is_anomaly"],
             )
         )
+
+    def _to_channel_result(self, result: AnalysisResult) -> Dict[str, Any]:
+        return {
+            "is_anomaly": result.is_anomaly,
+            "last_sessions": int(result.actual_value),
+            "forecast_data": result.forecast_data,
+        }
 
     def run_analysis(self, payload: AnomalyRequest) -> Dict[str, Any]:
         try:
@@ -99,34 +111,26 @@ class AnomalyService:
                         logger.warning(f"Skipping {channel_name}: Not enough data points.")
                         continue
 
-                    df = pd.DataFrame([h.dict() for h in history])
-                    df.rename(columns={'date': 'ds', 'sessions': 'y'}, inplace=True)
-                    df['ds'] = pd.to_datetime(df['ds'])
-
-                    # 2. 분석 실행[cite: 7, 21]
-                    forecast = self.detector.train_and_predict(df)
-
-                    is_anomaly = self.detector.check_anomaly(
-                        actual=df['y'].iloc[-1],
-                        lower=forecast['yhat_lower'].iloc[-1],
-                        upper=forecast['yhat_upper'].iloc[-1]
+                    task = AnalysisTask(
+                        analysis_id=f"{prop_id}:sessions:sessions:{channel_name}",
+                        domain="sessions",
+                        mode="diagnosis",
+                        property_id=prop_id,
+                        property_name=prop.property_name,
+                        metric_name="sessions",
+                        dimensions={"channel": channel_name},
+                        series=[
+                            TimeSeriesPoint(date=item.date, value=item.sessions)
+                            for item in history
+                        ],
+                        target_date=history[-1].date,
                     )
-
-                    prop_channels[channel_name] = {
-                        "is_anomaly": is_anomaly,
-                        "last_sessions": int(df['y'].iloc[-1]),
-                        "forecast_data": {
-                            "ds": forecast['ds'].dt.strftime('%Y-%m-%d').tolist(),
-                            "y": df['y'].tolist(),
-                            "yhat": forecast['yhat'].round(2).tolist(),
-                            "yhat_lower": forecast['yhat_lower'].round(2).tolist(),
-                            "yhat_upper": forecast['yhat_upper'].round(2).tolist()
-                        }
-                    }
+                    result = self.timeseries_service.run_single_metric_analysis(task)
+                    prop_channels[channel_name] = self._to_channel_result(result)
 
                     # 3. 메모리 강제 해제 (핵심)
-                    del df
-                    del forecast
+                    del task
+                    del result
                     gc.collect()
 
                 except Exception as e:

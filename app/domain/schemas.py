@@ -17,6 +17,7 @@ class ForecastData(BaseModel):
     yhat: List[float]
     yhat_lower: List[float]
     yhat_upper: List[float]
+    is_anomaly: List[bool]
 
 class BatchAnomalyRequest(BaseModel):
     """n8n에서 보내는 10개 단위 배치 요청을 수용합니다."""

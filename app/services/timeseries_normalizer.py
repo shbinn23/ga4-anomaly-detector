@@ -5,21 +5,21 @@ from typing import Any, Dict
 import pandas as pd
 
 from ..domain.generic_schemas import GenericAnalysisRequest
-from ..domain.timeseries import TimeSeriesTask, TimeSeriesValue
+from ..domain.timeseries import AnalysisTask, TimeSeriesPoint
 
 
 class TimeSeriesNormalizer:
     """Converts domain-specific payloads into canonical single-metric tasks."""
 
     @staticmethod
-    def from_generic_request(payload: GenericAnalysisRequest) -> TimeSeriesTask:
+    def from_generic_request(payload: GenericAnalysisRequest) -> AnalysisTask:
         dimensions = dict(payload.dimensions)
         series = [
-            TimeSeriesValue(date=item.date.isoformat(), value=item.value)
+            TimeSeriesPoint(date=item.date.isoformat(), value=item.value)
             for item in payload.series
         ]
 
-        return TimeSeriesTask(
+        return AnalysisTask(
             analysis_id=TimeSeriesNormalizer.build_analysis_id(
                 property_id=payload.property_id,
                 domain=payload.domain,
@@ -38,7 +38,7 @@ class TimeSeriesNormalizer:
         )
 
     @staticmethod
-    def to_dataframe(task: TimeSeriesTask) -> pd.DataFrame:
+    def to_dataframe(task: AnalysisTask) -> pd.DataFrame:
         df = pd.DataFrame(
             [{"ds": item.date, "y": item.value} for item in task.series]
         )

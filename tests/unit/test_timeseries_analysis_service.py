@@ -37,8 +37,9 @@ def test_generic_analysis_keeps_forecast_data_contract():
     response = service.run_generic_analysis(payload)
 
     forecast_data = response["result"]["forecast_data"]
-    assert list(forecast_data.keys()) == ["ds", "y", "yhat", "yhat_lower", "yhat_upper"]
+    assert list(forecast_data.keys()) == ["ds", "y", "yhat", "yhat_lower", "yhat_upper", "is_anomaly"]
     assert forecast_data["y"] == [100, 110, 90]
+    assert forecast_data["is_anomaly"] == [False, False, False]
     assert response["is_anomaly"] is False
 
 
