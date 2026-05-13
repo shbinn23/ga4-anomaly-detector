@@ -10,19 +10,77 @@
 
 Node/Python은 로컬에서 테스트를 직접 실행할 때만 필요하다. Docker Compose 실행만 할 경우 Docker가 핵심이다.
 
-## 2. Clone
+## 2. OS별 사전 준비
+
+### Mac
+
+필수:
+
+- Docker Desktop for Mac
+- Git
+
+확인:
+
+```bash
+docker --version
+docker compose version
+git --version
+```
+
+### Windows
+
+필수:
+
+- Docker Desktop for Windows
+- WSL2 backend 활성화
+- Git for Windows
+- PowerShell 또는 Windows Terminal
+
+확인:
+
+```powershell
+docker --version
+docker compose version
+git --version
+```
+
+Windows 주의:
+
+- Docker Desktop이 실행 중이어야 한다.
+- Docker Desktop Settings에서 WSL2 backend가 켜져 있어야 한다.
+- 회사 보안 정책이 Docker, WSL2, localhost port를 막을 수 있다.
+- 처음 build는 Mac보다 오래 걸릴 수 있다.
+
+## 3. Clone
+
+### Mac
 
 ```bash
 git clone <REPOSITORY_URL>
 cd ga4-anomaly-detector
 ```
 
-## 3. 환경 파일
+### Windows PowerShell
+
+```powershell
+git clone <REPOSITORY_URL>
+cd ga4-anomaly-detector
+```
+
+## 4. 환경 파일
 
 `.env.example`이 이미 있다. 최초 실행 시 복사한다.
 
+### Mac
+
 ```bash
 cp .env.example .env
+```
+
+### Windows PowerShell
+
+```powershell
+copy .env.example .env
 ```
 
 현재 주요 값:
@@ -40,21 +98,39 @@ PRIORITY_WATCH_IDS=prop_id1,prop_id2
 - GA4 OAuth credential은 `.env`가 아니라 n8n UI에서 만든다.
 - 다른 PC에서는 n8n credential이 자동 복사되지 않는다.
 
-## 4. Docker Compose 실행
+## 5. Docker Compose 실행
 
 빌드 및 실행:
+
+### Mac
 
 ```bash
 docker compose up -d --build
 ```
 
+### Windows PowerShell
+
+```powershell
+docker compose up -d --build
+```
+
 상태 확인:
+
+### Mac
 
 ```bash
 docker compose ps
 ```
 
+### Windows PowerShell
+
+```powershell
+docker compose ps
+```
+
 로그 확인:
+
+### Mac
 
 ```bash
 docker logs --tail 80 ga4-api
@@ -63,19 +139,44 @@ docker logs --tail 80 ga4-dashboard
 docker logs --tail 80 ga4-n8n
 ```
 
+### Windows PowerShell
+
+```powershell
+docker logs --tail 80 ga4-api
+docker logs --tail 80 ga4-frontend
+docker logs --tail 80 ga4-dashboard
+docker logs --tail 80 ga4-n8n
+```
+
 중지:
+
+### Mac
 
 ```bash
 docker compose down
 ```
 
+### Windows PowerShell
+
+```powershell
+docker compose down
+```
+
 볼륨까지 초기화:
+
+### Mac
 
 ```bash
 docker compose down -v
 ```
 
-## 5. 서비스 URL
+### Windows PowerShell
+
+```powershell
+docker compose down -v
+```
+
+## 6. 서비스 URL
 
 | Service | Container | URL |
 | --- | --- | --- |
@@ -87,11 +188,19 @@ docker compose down -v
 
 Health check:
 
+### Mac
+
 ```bash
 curl http://localhost:8000/api/v1/health
 ```
 
-## 6. n8n 최초 설정
+### Windows PowerShell
+
+```powershell
+curl http://localhost:8000/api/v1/health
+```
+
+## 7. n8n 최초 설정
 
 1. `http://localhost:5678` 접속
 2. 최초 owner account 생성
@@ -108,9 +217,11 @@ curl http://localhost:8000/api/v1/health
 - JSON을 수정한 뒤에는 n8n UI에서 다시 import하거나 export로 실제 반영 여부를 확인한다.
 - n8n SQLite 직접 write는 금지한다. 진단은 read-only로만 한다.
 
-## 7. 로컬 테스트 명령
+## 8. 로컬 테스트 명령
 
-Backend:
+화면 확인만 목적이면 이 섹션은 건너뛰어도 된다. Docker Compose로 띄우는 경우 Python/Node 의존성은 이미지 안에서 설치된다.
+
+### Mac Backend
 
 ```bash
 python3 -m venv venv
@@ -119,7 +230,16 @@ pip install -r requirements-api.txt
 venv/bin/pytest tests/unit
 ```
 
-Frontend:
+### Windows PowerShell Backend
+
+```powershell
+py -m venv venv
+.\venv\Scripts\Activate.ps1
+pip install -r requirements-api.txt
+python -m pytest tests/unit
+```
+
+### Mac Frontend
 
 ```bash
 cd frontend
@@ -129,7 +249,17 @@ npm run test
 npm run build
 ```
 
-## 8. 포트 충돌 확인
+### Windows PowerShell Frontend
+
+```powershell
+cd frontend
+npm install
+npm run lint
+npm run test
+npm run build
+```
+
+## 9. 포트 충돌 확인
 
 사용 포트:
 
@@ -140,7 +270,7 @@ npm run build
 5678 n8n
 ```
 
-충돌 확인:
+### Mac 충돌 확인
 
 ```bash
 lsof -i :8000
@@ -149,15 +279,32 @@ lsof -i :8501
 lsof -i :5678
 ```
 
+### Windows PowerShell 충돌 확인
+
+```powershell
+netstat -ano | findstr :8000
+netstat -ano | findstr :3000
+netstat -ano | findstr :8501
+netstat -ano | findstr :5678
+```
+
 이미 실행 중인 compose stack을 내릴 때:
+
+### Mac
 
 ```bash
 docker compose down
 ```
 
-## 9. 다른 PC 실행 가능 여부
+### Windows PowerShell
 
-현재 구조는 다른 PC에서 clone 후 Docker Compose로 실행 가능하다.
+```powershell
+docker compose down
+```
+
+## 10. 다른 PC 실행 가능 여부
+
+현재 구조는 Mac/Windows 모두 clone 후 Docker Compose로 실행 가능하다.
 
 단, 아래는 수동 설정이 필요하다.
 
@@ -167,3 +314,34 @@ docker compose down
 - Google Analytics OAuth2 credential 생성 및 node 재연결
 
 가장 흔한 blocker는 GA4 credential 미연결과 workflow JSON/n8n DB 불일치다.
+
+## 11. 빠른 실행 요약
+
+### Mac
+
+```bash
+git clone <REPOSITORY_URL>
+cd ga4-anomaly-detector
+cp .env.example .env
+docker compose up -d --build
+docker compose ps
+```
+
+### Windows PowerShell
+
+```powershell
+git clone <REPOSITORY_URL>
+cd ga4-anomaly-detector
+copy .env.example .env
+docker compose up -d --build
+docker compose ps
+```
+
+접속 URL은 Mac/Windows 동일하다.
+
+```text
+Next.js Dashboard: http://localhost:3000/dashboard
+n8n:               http://localhost:5678
+FastAPI Docs:      http://localhost:8000/docs
+Streamlit:         http://localhost:8501
+```
