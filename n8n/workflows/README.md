@@ -73,6 +73,61 @@ metric_name: eventCount
 dimensions: { eventName }
 ```
 
+## Added Unassigned Traffic Flow
+
+```text
+Existing property list
+  -> Unassigned - Build Detection Properties
+  -> Loop Unassigned Detection
+  -> GA4 Unassigned Detection Report
+  -> Prepare Unassigned Detection Payloads
+  -> POST Unassigned Detection
+  -> Filter Unassigned Detection Alerts
+  -> Loop Unassigned Diagnosis
+  -> GA4 Unassigned Diagnosis Report
+  -> Prepare Unassigned Diagnosis Payload
+  -> POST Unassigned Diagnosis
+```
+
+## Unassigned Detection
+
+GA4 request:
+
+```text
+dimensions: date, sessionDefaultChannelGroup
+metrics: sessions
+```
+
+FastAPI request:
+
+```text
+POST /api/v1/analyze/themes/unassigned-traffic/detection
+rows: date, sessionDefaultChannelGroup, sessions
+```
+
+n8n does not calculate `unassigned_session_share`; the backend derives it from raw rows.
+
+## Unassigned Diagnosis
+
+Triggered only when detection returns `should_run_diagnosis: true`.
+
+GA4 request:
+
+```text
+dimensions: date, sessionSourceMedium
+metrics: sessions
+dimensionFilter: sessionDefaultChannelGroup == Unassigned
+```
+
+FastAPI request:
+
+```text
+POST /api/v1/analyze/themes/unassigned-traffic/diagnosis
+rows: date, sessionSourceMedium, sessions
+```
+
+`(not set)`, empty, and null-ish source/medium values are not filtered in n8n. The backend normalizes them.
+
 ## Local Test URL
 
 The exported workflow currently points to the deployed API:

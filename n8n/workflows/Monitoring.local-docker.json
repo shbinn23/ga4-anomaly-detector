@@ -484,6 +484,177 @@
       ],
       "id": "b85ebceb-dd1f-4f74-a55c-c6ce48e04a6a",
       "name": "POST Ecommerce Generic Diagnosis"
+    },
+    {
+      "parameters": {
+        "content": "Unassigned Traffic flow\n\nStep 1 Detection: date + sessionDefaultChannelGroup + sessions raw rows.\nBackend derives unassigned_session_share.\n\nStep 2 Diagnosis only when should_run_diagnosis === true.\nGA4 filter: sessionDefaultChannelGroup == Unassigned.\n\nFastAPI: /api/v1/analyze/themes/unassigned-traffic/*",
+        "height": 300,
+        "width": 460
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1760,
+        1360
+      ],
+      "id": "87101457-8680-48cc-b87f-c033a2e103e5",
+      "name": "Sticky Note - Unassigned Traffic"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build Unassigned Traffic detection targets from the existing property list.\n// Backend calculates unassigned_session_share from raw GA4 rows.\nconst properties = $input.all();\n\nreturn properties.map(item => ({\n  json: {\n    propertyId: item.json.propertyId,\n    propertyName: item.json.propertyName,\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        1320
+      ],
+      "id": "b377890b-f61a-4b51-be4d-37db92694dd5",
+      "name": "Unassigned - Build Detection Properties"
+    },
+    {
+      "parameters": {
+        "batchSize": 5,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1984,
+        1320
+      ],
+      "id": "e1b7669f-8cf9-4f1c-827b-e2644f0955e8",
+      "name": "Loop Unassigned Detection"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://analyticsdata.googleapis.com/v1beta/properties/{{ $json.propertyId }}:batchRunReports",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"requests\": [\n    {\n      \"dimensions\": [\n        { \"name\": \"date\" },\n        { \"name\": \"sessionDefaultChannelGroup\" }\n      ],\n      \"metrics\": [\n        { \"name\": \"sessions\" }\n      ],\n      \"dateRanges\": [\n        { \"startDate\": \"90daysAgo\", \"endDate\": \"yesterday\" }\n      ],\n      \"orderBys\": [\n        { \"dimension\": { \"dimensionName\": \"date\" }, \"desc\": false },\n        { \"dimension\": { \"dimensionName\": \"sessionDefaultChannelGroup\" }, \"desc\": false }\n      ],\n      \"keepEmptyRows\": true\n    }\n  ]\n}",
+        "options": {},
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleAnalyticsOAuth2"
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2208,
+        1320
+      ],
+      "id": "25ce8bd8-5daa-4892-8b9c-797815ecb1ab",
+      "name": "GA4 Unassigned Detection Report"
+    },
+    {
+      "parameters": {
+        "jsCode": "const loopItems = $('Loop Unassigned Detection').all();\n\nreturn items.map((item, index) => {\n  const source = loopItems[index].json;\n  const reports = item.json.reports || [];\n  const rows = reports[0]?.rows || [];\n\n  const normalizedRows = rows.map(row => {\n    const dateValue = row.dimensionValues?.[0]?.value || '';\n    return {\n      date: [\n        dateValue.slice(0, 4),\n        dateValue.slice(4, 6),\n        dateValue.slice(6, 8),\n      ].join('-'),\n      sessionDefaultChannelGroup: row.dimensionValues?.[1]?.value ?? null,\n      sessions: parseFloat(row.metricValues?.[0]?.value || '0'),\n    };\n  }).filter(row => row.date.length === 10)\n    .sort((a, b) => a.date.localeCompare(b.date));\n\n  if (normalizedRows.length === 0) return null;\n\n  return {\n    json: {\n      property_id: source.propertyId,\n      property_name: source.propertyName,\n      date_start: normalizedRows[0].date,\n      date_end: normalizedRows[normalizedRows.length - 1].date,\n      target_date: normalizedRows[normalizedRows.length - 1].date,\n      rows: normalizedRows,\n    }\n  };\n}).filter(Boolean);"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2432,
+        1320
+      ],
+      "id": "ad44fbab-7af7-43ab-8081-d8511b729b31",
+      "name": "Prepare Unassigned Detection Payloads"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://api:8000/api/v1/analyze/themes/unassigned-traffic/detection",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2656,
+        1320
+      ],
+      "id": "89d2a239-c9a0-43cb-a896-004f98f3faf1",
+      "name": "POST Unassigned Detection"
+    },
+    {
+      "parameters": {
+        "jsCode": "const targets = [];\n\nfor (const item of items) {\n  if (item.json.should_run_diagnosis !== true) continue;\n\n  const result = item.json.result || {};\n  targets.push({\n    json: {\n      propertyId: result.property_id || item.json.property_id,\n      propertyName: result.property_name || result.property_id || item.json.property_id,\n      targetDate: item.json.target_date || result.target_date,\n      groupKey: item.json.group_key || result.metadata?.group_key,\n    }\n  });\n}\n\nreturn targets;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2208,
+        1640
+      ],
+      "id": "45d5448f-4f73-4a44-8dc0-861818be695e",
+      "name": "Filter Unassigned Detection Alerts"
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        2432,
+        1640
+      ],
+      "id": "b7b06b72-e3f3-4df2-82ba-b61f60d136ce",
+      "name": "Loop Unassigned Diagnosis"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://analyticsdata.googleapis.com/v1beta/properties/{{ $json.propertyId }}:batchRunReports",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"requests\": [\n    {\n      \"dimensions\": [\n        { \"name\": \"date\" },\n        { \"name\": \"sessionSourceMedium\" }\n      ],\n      \"metrics\": [\n        { \"name\": \"sessions\" }\n      ],\n      \"dateRanges\": [\n        { \"startDate\": \"90daysAgo\", \"endDate\": \"yesterday\" }\n      ],\n      \"dimensionFilter\": {\n        \"filter\": {\n          \"fieldName\": \"sessionDefaultChannelGroup\",\n          \"stringFilter\": {\n            \"matchType\": \"EXACT\",\n            \"value\": \"Unassigned\"\n          }\n        }\n      },\n      \"orderBys\": [\n        { \"dimension\": { \"dimensionName\": \"date\" }, \"desc\": false },\n        { \"dimension\": { \"dimensionName\": \"sessionSourceMedium\" }, \"desc\": false }\n      ],\n      \"keepEmptyRows\": true\n    }\n  ]\n}",
+        "options": {},
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleAnalyticsOAuth2"
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2656,
+        1640
+      ],
+      "id": "01da6714-be12-44f0-bd86-69a3266e697b",
+      "name": "GA4 Unassigned Diagnosis Report"
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Loop Unassigned Diagnosis').item.json;\nconst report = items[0].json.reports?.[0] || {};\nconst rows = report.rows || [];\n\nconst normalizedRows = rows.map(row => {\n  const dateValue = row.dimensionValues?.[0]?.value || '';\n  return {\n    date: [\n      dateValue.slice(0, 4),\n      dateValue.slice(4, 6),\n      dateValue.slice(6, 8),\n    ].join('-'),\n    sessionSourceMedium: row.dimensionValues?.[1]?.value ?? null,\n    sessions: parseFloat(row.metricValues?.[0]?.value || '0'),\n  };\n}).filter(row => row.date.length === 10)\n  .sort((a, b) => a.date.localeCompare(b.date));\n\nif (normalizedRows.length === 0) return [];\n\nreturn [{\n  json: {\n    property_id: source.propertyId,\n    property_name: source.propertyName,\n    date_start: normalizedRows[0].date,\n    date_end: normalizedRows[normalizedRows.length - 1].date,\n    target_date: source.targetDate || normalizedRows[normalizedRows.length - 1].date,\n    parent_group_key: source.groupKey,\n    rows: normalizedRows,\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2880,
+        1640
+      ],
+      "id": "a101d1e8-c54d-41f6-a02c-744db4109ef7",
+      "name": "Prepare Unassigned Diagnosis Payload"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://api:8000/api/v1/analyze/themes/unassigned-traffic/diagnosis",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        3104,
+        1640
+      ],
+      "id": "bfa5a3aa-fd4e-4d36-bda8-308188c16159",
+      "name": "POST Unassigned Diagnosis"
     }
   ],
   "pinData": {},
@@ -531,6 +702,11 @@
           },
           {
             "node": "Ecommerce - Build Detection Properties",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Unassigned - Build Detection Properties",
             "type": "main",
             "index": 0
           }
@@ -783,6 +959,124 @@
         [
           {
             "node": "Loop Ecommerce Diagnosis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Unassigned - Build Detection Properties": {
+      "main": [
+        [
+          {
+            "node": "Loop Unassigned Detection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Unassigned Detection": {
+      "main": [
+        [
+          {
+            "node": "Filter Unassigned Detection Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "GA4 Unassigned Detection Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GA4 Unassigned Detection Report": {
+      "main": [
+        [
+          {
+            "node": "Prepare Unassigned Detection Payloads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Unassigned Detection Payloads": {
+      "main": [
+        [
+          {
+            "node": "POST Unassigned Detection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "POST Unassigned Detection": {
+      "main": [
+        [
+          {
+            "node": "Loop Unassigned Detection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Unassigned Detection Alerts": {
+      "main": [
+        [
+          {
+            "node": "Loop Unassigned Diagnosis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Unassigned Diagnosis": {
+      "main": [
+        [],
+        [
+          {
+            "node": "GA4 Unassigned Diagnosis Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GA4 Unassigned Diagnosis Report": {
+      "main": [
+        [
+          {
+            "node": "Prepare Unassigned Diagnosis Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Unassigned Diagnosis Payload": {
+      "main": [
+        [
+          {
+            "node": "POST Unassigned Diagnosis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "POST Unassigned Diagnosis": {
+      "main": [
+        [
+          {
+            "node": "Loop Unassigned Diagnosis",
             "type": "main",
             "index": 0
           }
