@@ -6,8 +6,8 @@ router = APIRouter()
 
 @router.post("/reset")
 async def reset(storage: JSONStorage = Depends(JSONStorage)):
-    storage.clear()
-    return {"message": "Database cleared"}
+    cleared_files = storage.clear_all_analysis_files()
+    return {"message": "Databases cleared", "cleared_files": cleared_files}
 
 @router.get("/health")
 async def health_check():

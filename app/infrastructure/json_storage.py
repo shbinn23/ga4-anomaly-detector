@@ -58,6 +58,24 @@ class JSONStorage(BaseStorage):
         except Exception as e:
             raise InfrastructureError(f"Clear failed: {str(e)}")
 
+    def clear_all_analysis_files(self):
+        """모든 분석 결과 JSON 파일을 초기화합니다."""
+        paths = [
+            self.path,
+            self.path.parent / "channel_anomaly_db.json",
+            self.path.parent / "generic_analysis_db.json",
+        ]
+        try:
+            cleared = []
+            for path in paths:
+                if path.exists():
+                    path.unlink()
+                    cleared.append(path.name)
+            logger.info(f"Analysis database files cleared: {cleared}")
+            return cleared
+        except Exception as e:
+            raise InfrastructureError(f"Clear all failed: {str(e)}")
+
     def save_all_channel_analysis(self, data: dict):
         """채널 분석 결과를 기존 데이터에 병합하여 영속화합니다."""
         path = self.path.parent / "channel_anomaly_db.json"

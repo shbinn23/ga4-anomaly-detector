@@ -580,3 +580,50 @@ workflow files visible in /files/workflows
 - n8n 공식 문서도 self-hosting에는 Docker/서버/보안/백업 지식이 필요하다고 안내한다.
 - n8n Cloud의 Google Analytics credential은 로컬 Docker로 자동 이전되지 않는다.
 - 로컬 n8n에서 Google Analytics OAuth credential을 새로 연결해야 한다.
+
+### 추가 리뷰: n8n workflow 정적 검토 및 보정
+
+검토 대상:
+
+```text
+n8n/workflows/Monitoring.json
+n8n/workflows/Monitoring.generic-ecommerce.json
+n8n/workflows/Monitoring.local-docker.json
+```
+
+확인 결과:
+
+- workflow JSON parse 통과
+- node reference 누락 없음
+- local docker workflow endpoint는 `http://api:8000` 기준으로 정리됨
+- 기존 세션/채널 흐름은 유지됨
+
+발견한 리스크:
+
+1. `/api/v1/reset`이 기존에는 `results_db.json`만 삭제했다.
+   - n8n workflow는 시작 시 reset을 호출하므로 `channel_anomaly_db.json`, `generic_analysis_db.json`이 오래된 데이터로 남을 수 있었다.
+   - `JSONStorage.clear_all_analysis_files()`를 추가하고 reset endpoint가 세 파일을 모두 삭제하도록 변경했다.
+
+2. workflow property 필터 Code node에 `return` 이후 테스트 코드 조각이 남아 있었다.
+   - 실행되지는 않지만 혼선을 만들 수 있어 generic/local workflow에서 제거했다.
+
+3. 이커머스 Detection property source가 이전 노드를 직접 참조했다.
+   - local/generic workflow에서는 입력 아이템 기반 `$input.all()`을 우선 사용하도록 정리했다.
+
+검증:
+
+```text
+workflow JSON parse passed
+missing node refs: none
+py_compile passed
+pytest: 7 passed
+reset endpoint cleared:
+- results_db.json
+- channel_anomaly_db.json
+- generic_analysis_db.json
+```
+
+주의:
+
+- local reset 검증 후 대시보드 확인용 샘플 데이터는 다시 적재했다.
+- 실제 workflow 실행 검증은 Google Analytics credential 연결 후 n8n UI에서 수동 실행해야 한다.
