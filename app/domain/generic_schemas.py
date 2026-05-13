@@ -1,7 +1,13 @@
 from datetime import date
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+
+def parse_ga4_date(value):
+    if isinstance(value, str) and len(value) == 8 and value.isdigit():
+        return date(int(value[:4]), int(value[4:6]), int(value[6:8]))
+    return value
 
 
 class SeriesPoint(BaseModel):
@@ -73,6 +79,11 @@ class UnassignedTrafficRawRow(BaseModel):
     sessionDefaultChannelGroup: str
     sessions: float = Field(ge=0)
 
+    @field_validator("date", mode="before")
+    @classmethod
+    def parse_date(cls, value):
+        return parse_ga4_date(value)
+
 
 class UnassignedTrafficDetectionRequest(BaseModel):
     """Raw GA4 rows for Unassigned Traffic detection."""
@@ -84,6 +95,11 @@ class UnassignedTrafficDetectionRequest(BaseModel):
     date_start: Optional[date] = None
     date_end: Optional[date] = None
     rows: List[UnassignedTrafficRawRow] = Field(min_length=1)
+
+    @field_validator("target_date", "date_start", "date_end", mode="before")
+    @classmethod
+    def parse_dates(cls, value):
+        return parse_ga4_date(value)
 
     @model_validator(mode="after")
     def dates_must_match_available_rows(self):
@@ -102,6 +118,11 @@ class UnassignedTrafficDiagnosisRawRow(BaseModel):
     sessionSourceMedium: Optional[str] = None
     sessions: float = Field(ge=0)
 
+    @field_validator("date", mode="before")
+    @classmethod
+    def parse_date(cls, value):
+        return parse_ga4_date(value)
+
 
 class UnassignedTrafficDiagnosisRequest(BaseModel):
     """Raw GA4 rows for Unassigned Traffic diagnosis."""
@@ -112,9 +133,15 @@ class UnassignedTrafficDiagnosisRequest(BaseModel):
     target_date: Optional[date] = None
     date_start: Optional[date] = None
     date_end: Optional[date] = None
+    parent_group_key: Optional[str] = None
     top_n: int = Field(default=20, ge=1, le=100)
     min_total_value: float = Field(default=50, ge=0)
     rows: List[UnassignedTrafficDiagnosisRawRow] = Field(min_length=1)
+
+    @field_validator("target_date", "date_start", "date_end", mode="before")
+    @classmethod
+    def parse_dates(cls, value):
+        return parse_ga4_date(value)
 
     @model_validator(mode="after")
     def dates_must_match_available_rows(self):

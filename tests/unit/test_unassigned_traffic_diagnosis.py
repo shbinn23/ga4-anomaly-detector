@@ -60,6 +60,30 @@ def diagnosis_request(rows, target_date=None, top_n=20, min_total_value=50):
     )
 
 
+def test_unassigned_diagnosis_accepts_parent_group_key_and_compact_date_format():
+    payload = UnassignedTrafficDiagnosisRequest(
+        property_id="prop-1",
+        property_name="KR Shop",
+        target_date="20260502",
+        parent_group_key="prop-1:traffic_quality:unassigned_traffic:2026-05-02",
+        top_n=20,
+        min_total_value=0,
+        rows=[
+            {"date": "20260501", "sessionSourceMedium": "google / organic", "sessions": 90},
+            {"date": "20260502", "sessionSourceMedium": "google / organic", "sessions": 130},
+        ],
+    )
+
+    tasks = TimeSeriesNormalizer.from_unassigned_traffic_diagnosis(payload)
+
+    assert payload.parent_group_key == "prop-1:traffic_quality:unassigned_traffic:2026-05-02"
+    assert tasks[0].target_date == "2026-05-02"
+    assert [(point.date, point.value) for point in tasks[0].series] == [
+        ("2026-05-01", 90.0),
+        ("2026-05-02", 130.0),
+    ]
+
+
 def test_unassigned_diagnosis_route_is_registered():
     routes = {
         (route.path, next(iter(route.methods)))

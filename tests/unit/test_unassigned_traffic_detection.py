@@ -141,6 +141,26 @@ def test_unassigned_session_share_is_derived_ratio_with_zero_total_safe_value():
     ]
 
 
+def test_unassigned_detection_accepts_ga4_compact_date_format():
+    task = TimeSeriesNormalizer.from_unassigned_traffic_detection(
+        request(
+            [
+                {"date": "20260501", "sessionDefaultChannelGroup": "Unassigned", "sessions": 25},
+                {"date": "20260501", "sessionDefaultChannelGroup": "Organic Search", "sessions": 75},
+                {"date": "20260502", "sessionDefaultChannelGroup": "Unassigned", "sessions": 30},
+                {"date": "20260502", "sessionDefaultChannelGroup": "Organic Search", "sessions": 70},
+            ],
+            target_date="20260502",
+        )
+    )
+
+    assert task.target_date == "2026-05-02"
+    assert [(point.date, point.value) for point in task.series] == [
+        ("2026-05-01", 0.25),
+        ("2026-05-02", 0.3),
+    ]
+
+
 def test_unassigned_task_preserves_contract_metadata_and_passes_only_ds_y_to_detector():
     detector = RatioDetector()
     service = TimeSeriesAnalysisService(detector=detector)
