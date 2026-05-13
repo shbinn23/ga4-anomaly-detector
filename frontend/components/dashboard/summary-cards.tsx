@@ -5,7 +5,7 @@ import type { SummaryStats } from "@/lib/types";
 const labels = [
   ["Total analyses", "totalAnalyses"],
   ["Anomaly detected", "anomalyCount"],
-  ["Latest result", "latestLabel"],
+  ["Latest result", "latestResultDate"],
   ["Affected segments", "affectedSegments"],
 ] as const;
 

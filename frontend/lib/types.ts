@@ -8,30 +8,38 @@ export type ForecastData = {
   yhat: number[];
   yhat_lower: number[];
   yhat_upper: number[];
-  is_anomaly?: boolean[];
+  is_anomaly: boolean[];
 };
 
 export type AnalysisResult = {
-  analysis_id?: string;
-  domain?: string;
-  mode?: string;
+  id?: string;
+  source?: string;
+  analysis_id: string;
+  domain: string;
+  mode: string;
   property_id?: string;
   property_name?: string | null;
-  metric_name?: string;
-  dimensions?: Record<string, unknown>;
-  is_anomaly?: boolean;
+  metric_name: string;
+  dimension: string | null;
+  dimension_value: string | null;
+  dimensions: Record<string, unknown>;
+  has_anomaly: boolean;
+  is_anomaly: boolean;
   actual_value?: number;
   lower_bound?: number;
   upper_bound?: number;
   target_date?: string;
-  last_sessions?: number;
-  updated_at?: string;
-  forecast_data?: ForecastData;
+  latest_point?: ForecastPoint | null;
+  forecast_data: ForecastData;
 };
 
 export type AnalysisRecord = {
   id: string;
   result: AnalysisResult;
+};
+
+export type DashboardResultsResponse = {
+  items: AnalysisResult[];
 };
 
 export type DashboardData = {
@@ -52,18 +60,21 @@ export type ForecastPoint = {
 export type SummaryStats = {
   totalAnalyses: number;
   anomalyCount: number;
-  latestLabel: string;
+  latestResultDate: string;
   affectedSegments: number;
 };
 
 export type AnalysisTableRow = {
   id: string;
+  domain: string;
+  mode: string;
+  metricName: string;
   dimension: string;
   dimensionValue: string;
   anomalyCount: number;
   lastAnomalyDate: string;
   latestY: number | null;
   latestYhat: number | null;
-  deviation: number | null;
+  latestDeviation: number | null;
   direction: "up" | "down" | "flat" | "unknown";
 };

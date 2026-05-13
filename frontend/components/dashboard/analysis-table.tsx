@@ -21,6 +21,9 @@ export function AnalysisTable({ rows }: { rows: AnalysisTableRow[] }) {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>Domain</TableHead>
+              <TableHead>Mode</TableHead>
+              <TableHead>Metric</TableHead>
               <TableHead>Dimension</TableHead>
               <TableHead>Dimension value</TableHead>
               <TableHead>Anomalies</TableHead>
@@ -34,13 +37,16 @@ export function AnalysisTable({ rows }: { rows: AnalysisTableRow[] }) {
           <TableBody>
             {rows.map((row) => (
               <TableRow key={row.id}>
+                <TableCell className="font-medium">{row.domain}</TableCell>
+                <TableCell className="text-muted-foreground">{row.mode}</TableCell>
+                <TableCell className="text-muted-foreground">{row.metricName}</TableCell>
                 <TableCell className="font-medium">{row.dimension}</TableCell>
                 <TableCell className="text-muted-foreground">{row.dimensionValue}</TableCell>
                 <TableCell>{formatNumber(row.anomalyCount)}</TableCell>
                 <TableCell>{row.lastAnomalyDate}</TableCell>
                 <TableCell>{formatNumber(row.latestY)}</TableCell>
                 <TableCell>{formatNumber(row.latestYhat)}</TableCell>
-                <TableCell>{formatPercent(row.deviation)}</TableCell>
+                <TableCell>{formatPercent(row.latestDeviation)}</TableCell>
                 <TableCell>
                   <Badge tone={row.direction === "unknown" ? "neutral" : row.direction === "flat" ? "success" : "warning"}>
                     {row.direction}

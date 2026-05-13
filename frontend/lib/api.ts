@@ -1,4 +1,9 @@
-import type { AnalysisRecord, ApiHealth, DashboardData } from "@/lib/types";
+import type {
+  AnalysisRecord,
+  ApiHealth,
+  DashboardData,
+  DashboardResultsResponse,
+} from "@/lib/types";
 
 const API_BASE_URL = process.env.API_BASE_URL || "http://localhost:8000";
 
@@ -18,23 +23,16 @@ export async function getApiHealth(): Promise<ApiHealth> {
   return fetchJson<ApiHealth>("/api/v1/health");
 }
 
-export async function getAnalysisResults(): Promise<AnalysisRecord[]> {
-  try {
-    const data = await fetchJson<unknown>("/api/v1/analysis-results");
-    if (!data || typeof data !== "object" || Array.isArray(data)) {
-      throw new Error("Unexpected analysis result shape");
-    }
-
-    return Object.entries(data as Record<string, unknown>).map(([id, result]) => ({
-      id,
-      result: result as AnalysisRecord["result"],
-    }));
-  } catch (error) {
-    if (error instanceof Error && error.message.includes("404")) {
-      return [];
-    }
-    throw error;
+export async function fetchDashboardResults(): Promise<AnalysisRecord[]> {
+  const data = await fetchJson<DashboardResultsResponse>("/api/v1/dashboard/results");
+  if (!data || !Array.isArray(data.items)) {
+    throw new Error("Unexpected dashboard result shape");
   }
+
+  return data.items.map((result) => ({
+    id: result.id || result.analysis_id,
+    result,
+  }));
 }
 
 export async function getDashboardData(): Promise<DashboardData> {
@@ -49,7 +47,7 @@ export async function getDashboardData(): Promise<DashboardData> {
   }
 
   try {
-    analyses = await getAnalysisResults();
+    analyses = await fetchDashboardResults();
   } catch (error) {
     errors.push(error instanceof Error ? error.message : "Analysis result fetch failed");
   }

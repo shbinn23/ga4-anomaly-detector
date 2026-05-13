@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from .api.routers import analyze, management
+from .api.routers import analyze, dashboard, management
 from .core.config import settings
 from .core.logging import setup_logging
 
@@ -14,6 +14,7 @@ app = FastAPI(
 # [핵심 수정] 모든 라우터를 /api/v1 그룹으로 묶어 등록합니다.
 app.include_router(analyze.router, prefix="/api/v1", tags=["Analysis"])
 app.include_router(management.router, prefix="/api/v1", tags=["Management"])
+app.include_router(dashboard.router, prefix="/api/v1", tags=["Dashboard"])
 
 @app.get("/")
 async def root():
