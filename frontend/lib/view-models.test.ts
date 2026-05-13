@@ -3,8 +3,12 @@ import { describe, expect, it } from "vitest";
 import type { AnalysisRecord, ForecastData } from "./types";
 import {
   buildAnalysisRows,
-  buildDashboardSections,
-  buildSummary,
+  buildDiagnosisPage,
+  buildMainOverview,
+  buildReportsPage,
+  buildThemeDetectionPage,
+  decodeGroupKey,
+  encodeGroupKey,
   getDetectionResults,
   getDiagnosisResults,
   groupDiagnosisByDetection,
@@ -80,16 +84,15 @@ describe("dashboard view models", () => {
   it("includes anomalous detection and diagnosis items in section summaries", () => {
     const detection = record({ id: "detection", mode: "detection", dimension: null, dimension_value: null });
     const diagnosis = record({ id: "diagnosis", mode: "diagnosis" });
-    const sections = buildDashboardSections([diagnosis, detection]);
+    const overview = buildMainOverview([diagnosis, detection]);
 
-    expect(sections.featuredDetection?.id).toBe("detection");
-    expect(sections.featuredDiagnosis?.id).toBe("diagnosis");
-    expect(buildSummary(sections)).toEqual({
+    expect(overview.stats).toEqual({
       totalAnalyses: 2,
-      detectionAnomalyCount: 1,
-      diagnosisAnomalyCount: 1,
+      anomalousPropertyCount: 1,
+      anomalousThemeCount: 1,
       latestAnomalyDate: "2026-05-02",
     });
+    expect(overview.themeSummaries.find((item) => item.theme === "ecommerce")?.anomalyCount).toBe(2);
   });
 
   it("links detection and diagnosis by group_key", () => {
@@ -140,11 +143,81 @@ describe("dashboard view models", () => {
     ]);
 
     expect(rows[0]).toMatchObject({
+      hasAnomaly: true,
       latestY: 180,
       latestYhat: 120,
       latestDeviation: 50,
       direction: "up",
       dimension: "eventName",
+      dimensionValue: "purchase",
+    });
+  });
+
+  it("builds main summary, theme cards, and property-theme matrix", () => {
+    const overview = buildMainOverview([
+      record({ id: "sessions-detection", domain: "sessions", mode: "detection", property_id: "p1", property_name: "Property 1", dimension: null, dimension_value: null }),
+      record({ id: "ecommerce-detection", domain: "ecommerce", mode: "detection", property_id: "p1", property_name: "Property 1", dimension: null, dimension_value: null, has_anomaly: false, forecast_data: forecast(100, 100, 0) }),
+    ]);
+
+    expect(overview.stats.totalAnalyses).toBe(2);
+    expect(overview.themeSummaries.map((item) => item.theme)).toEqual(["sessions", "ecommerce"]);
+    expect(overview.propertyThemeMatrix[0]).toMatchObject({
+      propertyName: "Property 1",
+      themes: [
+        { theme: "sessions", status: "anomaly" },
+        { theme: "ecommerce", status: "normal" },
+      ],
+    });
+  });
+
+  it("builds theme detection pages for current themes only", () => {
+    const items = [
+      record({ id: "sessions-detection", domain: "sessions", mode: "detection", dimension: null, dimension_value: null }),
+      record({ id: "sessions-diagnosis", domain: "sessions", mode: "diagnosis" }),
+      record({ id: "ecommerce-detection", domain: "ecommerce", mode: "detection", dimension: null, dimension_value: null }),
+    ];
+
+    expect(buildThemeDetectionPage(items, "sessions").detections.map((item) => item.id)).toEqual(["sessions-detection"]);
+    expect(buildThemeDetectionPage(items, "ecommerce").detections.map((item) => item.id)).toEqual(["ecommerce-detection"]);
+  });
+
+  it("sorts anomalous detection first and marks diagnosis links", () => {
+    const detectionWithDiagnosis = record({ id: "with", mode: "detection", group_key: "group:with", dimension: null, dimension_value: null });
+    const detectionWithoutDiagnosis = record({ id: "without", mode: "detection", group_key: "group:without", has_anomaly: false, forecast_data: forecast(100, 100, 0), dimension: null, dimension_value: null });
+    const diagnosis = record({ id: "diagnosis", mode: "diagnosis", group_key: "group:with" });
+
+    const page = buildThemeDetectionPage([detectionWithoutDiagnosis, diagnosis, detectionWithDiagnosis], "ecommerce");
+
+    expect(page.rows.map((row) => row.id)).toEqual(["with", "without"]);
+    expect(page.rows[0]).toMatchObject({ detailLabel: "원인 분석 보기", detailDisabled: false });
+    expect(page.rows[1]).toMatchObject({ detailLabel: "원인 분석 없음", detailDisabled: true });
+  });
+
+  it("builds diagnosis page from encoded groupKey", () => {
+    const detection = record({ id: "detection", mode: "detection", group_key: "prop:ecommerce:eventCount:2026-05-02", dimension: null, dimension_value: null });
+    const diagnosis = record({ id: "diagnosis", mode: "diagnosis", group_key: "prop:ecommerce:eventCount:2026-05-02" });
+    const other = record({ id: "other", mode: "diagnosis", group_key: "other" });
+
+    const encoded = encodeGroupKey("prop:ecommerce:eventCount:2026-05-02");
+    const page = buildDiagnosisPage([detection, diagnosis, other], encoded);
+
+    expect(decodeGroupKey(encoded)).toBe("prop:ecommerce:eventCount:2026-05-02");
+    expect(page.diagnoses.map((item) => item.id)).toEqual(["diagnosis"]);
+  });
+
+  it("builds deterministic property reports with detection evidence and diagnosis candidates", () => {
+    const detection = record({ id: "detection", mode: "detection", group_key: "group-1", dimension: null, dimension_value: null });
+    const diagnosis = record({ id: "diagnosis", mode: "diagnosis", group_key: "group-1", dimension_value: "purchase" });
+
+    const first = buildReportsPage([diagnosis, detection]);
+    const second = buildReportsPage([diagnosis, detection]);
+
+    expect(first).toEqual(second);
+    expect(first.propertyReports[0].reports[0]).toMatchObject({
+      detectionHref: "/dashboard/themes/ecommerce",
+      diagnosisHref: "/dashboard/diagnosis/group-1",
+    });
+    expect(first.propertyReports[0].reports[0].diagnosisCandidates[0]).toMatchObject({
       dimensionValue: "purchase",
     });
   });

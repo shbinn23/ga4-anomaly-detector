@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import Link from "next/link";
 import {
   Table,
   TableBody,
@@ -39,6 +40,7 @@ export function AnalysisTable({
               <TableHead>Latest yhat</TableHead>
               <TableHead>Deviation</TableHead>
               <TableHead>Direction</TableHead>
+              <TableHead>Detail</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -59,6 +61,17 @@ export function AnalysisTable({
                   <Badge tone={row.direction === "unknown" ? "neutral" : row.direction === "flat" ? "success" : "warning"}>
                     {row.direction}
                   </Badge>
+                </TableCell>
+                <TableCell>
+                  {row.detailHref ? (
+                    <Link className="text-sm font-medium underline-offset-4 hover:underline" href={row.detailHref}>
+                      {row.detailLabel ?? "Open"}
+                    </Link>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">
+                      {row.detailLabel ?? (row.detailDisabled ? "Unavailable" : "-")}
+                    </span>
+                  )}
                 </TableCell>
               </TableRow>
             ))}

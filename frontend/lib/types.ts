@@ -60,8 +60,8 @@ export type ForecastPoint = {
 
 export type SummaryStats = {
   totalAnalyses: number;
-  detectionAnomalyCount: number;
-  diagnosisAnomalyCount: number;
+  anomalousPropertyCount: number;
+  anomalousThemeCount: number;
   latestAnomalyDate: string;
 };
 
@@ -69,6 +69,7 @@ export type AnalysisTableRow = {
   id: string;
   groupKey: string;
   propertyName: string;
+  hasAnomaly: boolean;
   domain: string;
   mode: string;
   metricName: string;
@@ -78,8 +79,13 @@ export type AnalysisTableRow = {
   lastAnomalyDate: string;
   latestY: number | null;
   latestYhat: number | null;
+  latestLower: number | null;
+  latestUpper: number | null;
   latestDeviation: number | null;
   direction: "up" | "down" | "flat" | "unknown";
+  detailHref?: string;
+  detailLabel?: string;
+  detailDisabled?: boolean;
 };
 
 export type DashboardGroup = {
@@ -95,4 +101,65 @@ export type DashboardSections = {
   groups: DashboardGroup[];
   featuredDetection: AnalysisRecord | null;
   featuredDiagnosis: AnalysisRecord | null;
+};
+
+export type ThemeSummary = {
+  theme: string;
+  href: string;
+  totalCount: number;
+  detectionCount: number;
+  diagnosisCount: number;
+  anomalyCount: number;
+};
+
+export type PropertyThemeCell = {
+  theme: string;
+  status: "anomaly" | "normal" | "missing";
+  href: string;
+};
+
+export type PropertyThemeRow = {
+  propertyId: string;
+  propertyName: string;
+  themes: PropertyThemeCell[];
+};
+
+export type MainOverview = {
+  stats: SummaryStats;
+  themeSummaries: ThemeSummary[];
+  propertyThemeMatrix: PropertyThemeRow[];
+};
+
+export type ThemeDetectionPage = {
+  theme: string;
+  detections: AnalysisRecord[];
+  rows: AnalysisTableRow[];
+  featuredDetection: AnalysisRecord | null;
+};
+
+export type DiagnosisPage = {
+  groupKey: string;
+  detection: AnalysisRecord | null;
+  diagnoses: AnalysisRecord[];
+  rows: AnalysisTableRow[];
+  featuredDiagnosis: AnalysisRecord | null;
+};
+
+export type ReportItem = AnalysisTableRow & {
+  theme: string;
+  detectionHref?: string;
+  diagnosisHref?: string;
+  diagnosisCandidates: AnalysisTableRow[];
+};
+
+export type ReportsPage = {
+  propertyReports: Array<{
+    propertyId: string;
+    propertyName: string;
+    reports: ReportItem[];
+  }>;
+  themeReports: Array<{
+    theme: string;
+    reports: ReportItem[];
+  }>;
 };

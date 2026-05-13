@@ -6,8 +6,11 @@ describe("dashboard page composition", () => {
   it("delegates grouping and sorting to view models", () => {
     const source = readFileSync(resolve(process.cwd(), "app/dashboard/page.tsx"), "utf-8");
 
-    expect(source).toContain("buildDashboardSections");
-    expect(source).toContain("buildSummary");
+    expect(source).toContain("buildMainOverview");
+    expect(source).not.toContain("ForecastChart");
+    expect(source).not.toContain("AnalysisTable");
+    expect(source).not.toContain("Step 1");
+    expect(source).not.toContain("Step 2");
     expect(source).not.toContain(".filter(");
     expect(source).not.toContain(".sort(");
     expect(source).not.toContain("mode ===");
