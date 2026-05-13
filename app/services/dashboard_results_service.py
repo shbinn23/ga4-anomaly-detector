@@ -12,6 +12,8 @@ from ..domain.dashboard_schemas import (
 from ..domain.exceptions import InfrastructureError
 from ..domain.timeseries import AnalysisResult
 from ..infrastructure.json_storage import JSONStorage
+from .alert_policy import summarize_alert_policy
+from .timeseries_normalizer import TimeSeriesNormalizer
 
 
 class DashboardResultsService:
@@ -43,10 +45,12 @@ class DashboardResultsService:
                 raise InfrastructureError(f"Invalid session result for {property_id}")
 
             forecast_data = self._forecast_data(result, f"sessions:{property_id}")
+            forecast_dict = forecast_data.model_dump(mode="json")
             item_id = f"sessions:detection:{property_id}"
             has_anomaly = any(forecast_data.is_anomaly)
             target_point = self._target_point(forecast_data, result.get("updated_at"))
-            alert_status = self._alert_status(forecast_data, target_point)
+            alert_summary = summarize_alert_policy(forecast_dict, result.get("updated_at"))
+            alert_status = alert_summary["alert_status"]
             group_key = self._group_key(str(property_id), "sessions", "sessions", target_point)
             items.append(
                 self._item(
@@ -90,10 +94,12 @@ class DashboardResultsService:
                     raise InfrastructureError(f"Invalid channel result for {property_id}:{dimension_value}")
 
                 forecast_data = self._forecast_data(result, f"channel:{property_id}:{dimension_value}")
+                forecast_dict = forecast_data.model_dump(mode="json")
                 item_id = f"sessions:diagnosis:{property_id}:{dimension_value}"
                 has_anomaly = any(forecast_data.is_anomaly)
                 target_point = self._target_point(forecast_data, result.get("updated_at"))
-                alert_status = self._alert_status(forecast_data, target_point)
+                alert_summary = summarize_alert_policy(forecast_dict, result.get("updated_at"))
+                alert_status = alert_summary["alert_status"]
                 group_key = self._group_key(str(property_id), "sessions", "sessions", target_point)
                 items.append(
                     self._item(
@@ -142,11 +148,27 @@ class DashboardResultsService:
                 result.model_dump(mode="json"),
                 f"generic:{key}",
             )
+            forecast_dict = forecast_data.model_dump(mode="json")
             dimension, dimension_value = self._representative_dimension(result.mode, result.dimensions)
             has_anomaly = any(forecast_data.is_anomaly)
-            target_point = self._target_point(forecast_data, result.target_date)
-            alert_status = self._alert_status(forecast_data, target_point)
-            group_key = self._group_key(result.property_id, result.domain, result.metric_name, target_point)
+            alert_summary = summarize_alert_policy(
+                forecast_dict,
+                result.target_date,
+                result.alert_direction_policy,
+            )
+            target_point = (
+                DashboardForecastPoint(**alert_summary["target_point"])
+                if alert_summary["target_point"]
+                else None
+            )
+            alert_status = alert_summary["alert_status"]
+            group_key = self._group_key(
+                result.property_id,
+                result.domain,
+                result.metric_name,
+                target_point,
+                result.theme_id,
+            )
             item = self._item(
                 {
                     "id": str(key),
@@ -157,10 +179,14 @@ class DashboardResultsService:
                     "mode": result.mode,
                     "property_id": result.property_id,
                     "property_name": result.property_name,
+                    "theme_id": result.theme_id,
                     "metric_name": result.metric_name,
+                    "metric_type": result.metric_type,
+                    "alert_direction_policy": result.alert_direction_policy,
                     "dimension": dimension,
                     "dimension_value": dimension_value,
                     "dimensions": result.dimensions,
+                    "metadata": result.metadata,
                     "has_anomaly": has_anomaly,
                     "is_anomaly": result.is_anomaly,
                     "actual_value": result.actual_value,
@@ -168,10 +194,10 @@ class DashboardResultsService:
                     "upper_bound": result.upper_bound,
                     "target_date": target_point.ds if target_point else result.target_date,
                     "target_point": target_point,
-                    "is_current_anomaly": bool(target_point.is_anomaly) if target_point else False,
+                    "is_current_anomaly": alert_summary["is_current_anomaly"],
                     "alert_status": alert_status,
-                    "historical_anomaly_count": sum(1 for value in forecast_data.is_anomaly if value),
-                    "recent_anomaly_count": self._recent_anomaly_count(forecast_data, target_point),
+                    "historical_anomaly_count": alert_summary["historical_anomaly_count"],
+                    "recent_anomaly_count": alert_summary["recent_anomaly_count"],
                     "latest_point": target_point,
                     "forecast_data": forecast_data,
                 },
@@ -233,27 +259,22 @@ class DashboardResultsService:
                 count += 1
         return count
 
-    def _alert_status(
-        self,
-        forecast_data: DashboardForecastData,
-        target_point: Optional[DashboardForecastPoint],
-    ) -> str:
-        if not target_point:
-            return "normal"
-        if target_point.is_anomaly:
-            return "alert"
-        if self._recent_anomaly_count(forecast_data, target_point) >= 2:
-            return "watch"
-        return "normal"
-
     def _group_key(
         self,
         property_id: Optional[str],
         domain: str,
         metric_name: str,
         target_point: Optional[DashboardForecastPoint],
+        theme_id: Optional[str] = None,
     ) -> str:
         target_date = target_point.ds if target_point else ""
+        if theme_id == "unassigned_traffic":
+            return TimeSeriesNormalizer.build_theme_group_key(
+                property_id,
+                domain,
+                theme_id,
+                target_date,
+            )
         return ":".join([property_id or "", domain, metric_name, target_date])
 
     def _representative_dimension(

@@ -1,5 +1,11 @@
 from fastapi import APIRouter, Depends
-from ...domain.generic_schemas import GenericAnalysisRequest, GenericAnalysisResponse
+from ...domain.generic_schemas import (
+    GenericAnalysisRequest,
+    GenericAnalysisResponse,
+    ThemeDiagnosisResponse,
+    UnassignedTrafficDetectionRequest,
+    UnassignedTrafficDiagnosisRequest,
+)
 from ...domain.schemas import AnomalyRequest, BatchAnomalyRequest, ChannelUpdateTask
 from ...services.anomaly_service import AnomalyService
 from ...services.timeseries_analysis_service import TimeSeriesAnalysisService
@@ -28,6 +34,20 @@ async def analyze_generic(
         service: TimeSeriesAnalysisService = Depends(get_timeseries_analysis_service)
 ):
     return service.run_generic_analysis(payload)
+
+@router.post("/analyze/themes/unassigned-traffic/detection", response_model=GenericAnalysisResponse)
+async def analyze_unassigned_traffic_detection(
+        payload: UnassignedTrafficDetectionRequest,
+        service: TimeSeriesAnalysisService = Depends(get_timeseries_analysis_service)
+):
+    return service.run_unassigned_traffic_detection(payload)
+
+@router.post("/analyze/themes/unassigned-traffic/diagnosis", response_model=ThemeDiagnosisResponse)
+async def analyze_unassigned_traffic_diagnosis(
+        payload: UnassignedTrafficDiagnosisRequest,
+        service: TimeSeriesAnalysisService = Depends(get_timeseries_analysis_service)
+):
+    return service.run_unassigned_traffic_diagnosis(payload)
 
 @router.post("/update-channels")
 async def update_channels(

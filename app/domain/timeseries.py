@@ -36,7 +36,10 @@ class AnalysisTask(BaseModel):
     mode: str
     property_id: str
     property_name: Optional[str]
+    theme_id: Optional[str] = None
     metric_name: str
+    metric_type: Optional[str] = None
+    alert_direction_policy: str = "two_sided"
     dimensions: Dict[str, Any]
     series: List[TimeSeriesPoint] = Field(min_length=2)
     target_date: Optional[str] = None
@@ -49,8 +52,12 @@ class AnalysisResult(BaseModel):
     mode: str
     property_id: str
     property_name: Optional[str]
+    theme_id: Optional[str] = None
     metric_name: str
+    metric_type: Optional[str] = None
+    alert_direction_policy: str = "two_sided"
     dimensions: Dict[str, Any]
+    metadata: Dict[str, Any] = Field(default_factory=dict)
     is_anomaly: bool
     actual_value: float
     lower_bound: float

@@ -54,10 +54,14 @@ class DashboardResultItem(BaseModel):
     mode: str
     property_id: Optional[str] = None
     property_name: Optional[str] = None
+    theme_id: Optional[str] = None
     metric_name: str
+    metric_type: Optional[str] = None
+    alert_direction_policy: str = "two_sided"
     dimension: Optional[str] = None
     dimension_value: Optional[str] = None
     dimensions: Dict[str, Any] = Field(default_factory=dict)
+    metadata: Dict[str, Any] = Field(default_factory=dict)
     has_anomaly: bool
     is_anomaly: bool
     actual_value: Optional[float] = None
