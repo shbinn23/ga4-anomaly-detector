@@ -1,0 +1,122 @@
+"use client";
+
+import {
+  Area,
+  CartesianGrid,
+  ComposedChart,
+  Line,
+  ReferenceDot,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { normalizeForecastData } from "@/lib/forecast";
+import type { AnalysisRecord } from "@/lib/types";
+
+const chartConfig = {
+  y: {
+    label: "Actual",
+    color: "var(--chart-actual)",
+  },
+  yhat: {
+    label: "Forecast",
+    color: "var(--chart-forecast)",
+  },
+  yhat_upper: {
+    label: "Upper",
+    color: "var(--chart-band)",
+  },
+  yhat_lower: {
+    label: "Lower",
+    color: "var(--chart-band)",
+  },
+};
+
+export function ForecastChart({ analysis }: { analysis: AnalysisRecord | null }) {
+  const data = normalizeForecastData(analysis?.result.forecast_data);
+  const anomalyPoints = data.filter((point) => point.is_anomaly);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="serif-heading text-2xl">Forecast trace</CardTitle>
+        <CardDescription>
+          Actual value, expected center line, confidence interval, and anomaly points.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {data.length ? (
+          <ChartContainer config={chartConfig} className="min-h-80">
+            <ComposedChart data={data} margin={{ left: 4, right: 10, top: 12, bottom: 0 }}>
+              <CartesianGrid vertical={false} stroke="var(--border)" />
+              <XAxis
+                dataKey="ds"
+                tickLine={false}
+                axisLine={false}
+                tickMargin={10}
+                minTickGap={28}
+                stroke="var(--muted-foreground)"
+              />
+              <YAxis
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+                width={44}
+                stroke="var(--muted-foreground)"
+              />
+              <ChartTooltip content={<ChartTooltipContent />} />
+              <Area
+                dataKey="yhat_upper"
+                type="monotone"
+                fill="var(--chart-band)"
+                fillOpacity={0.18}
+                stroke="transparent"
+                dot={false}
+                activeDot={false}
+              />
+              <Area
+                dataKey="yhat_lower"
+                type="monotone"
+                fill="var(--card)"
+                fillOpacity={1}
+                stroke="transparent"
+                dot={false}
+                activeDot={false}
+              />
+              <Line
+                dataKey="yhat"
+                type="monotone"
+                stroke="var(--chart-forecast)"
+                strokeWidth={2}
+                dot={false}
+              />
+              <Line
+                dataKey="y"
+                type="monotone"
+                stroke="var(--chart-actual)"
+                strokeWidth={2}
+                dot={false}
+              />
+              {anomalyPoints.map((point) => (
+                <ReferenceDot
+                  key={point.ds}
+                  x={point.ds}
+                  y={point.y}
+                  r={4}
+                  fill="var(--chart-anomaly)"
+                  stroke="var(--card)"
+                  strokeWidth={2}
+                />
+              ))}
+            </ComposedChart>
+          </ChartContainer>
+        ) : (
+          <div className="flex min-h-80 items-center justify-center rounded-lg border border-dashed bg-muted/35 text-sm text-muted-foreground">
+            No forecast series available.
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}

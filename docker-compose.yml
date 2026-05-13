@@ -39,6 +39,21 @@ services:
     mem_limit: 256m
     memswap_limit: 256m
 
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    image: ga4-anomaly-frontend:latest
+    container_name: ga4-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - API_BASE_URL=http://api:8000
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
   n8n:
     image: docker.n8n.io/n8nio/n8n:stable
     container_name: ga4-n8n

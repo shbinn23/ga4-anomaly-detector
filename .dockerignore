@@ -11,3 +11,6 @@ tests/
 data/
 static/
 *.iml
+frontend/node_modules/
+frontend/.next/
+frontend/out/
