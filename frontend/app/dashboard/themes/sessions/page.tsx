@@ -3,14 +3,11 @@ import { ThemeDetectionView } from "../theme-page";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export default async function ThemePage({
-  params,
+export default async function SessionsThemePage({
   searchParams,
 }: {
-  params: Promise<{ theme: string }>;
   searchParams: Promise<{ tab?: string }>;
 }) {
-  const { theme } = await params;
   const query = await searchParams;
-  return <ThemeDetectionView activeTab={query.tab === "table" ? "table" : "chart"} theme={theme} />;
+  return <ThemeDetectionView activeTab={query.tab === "table" ? "table" : "chart"} theme="sessions" />;
 }

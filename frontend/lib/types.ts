@@ -30,6 +30,11 @@ export type AnalysisResult = {
   lower_bound?: number;
   upper_bound?: number;
   target_date?: string;
+  target_point?: ForecastPoint | null;
+  is_current_anomaly: boolean;
+  alert_status: "normal" | "watch" | "alert";
+  historical_anomaly_count: number;
+  recent_anomaly_count: number;
   latest_point?: ForecastPoint | null;
   forecast_data: ForecastData;
 };
@@ -70,12 +75,15 @@ export type AnalysisTableRow = {
   groupKey: string;
   propertyName: string;
   hasAnomaly: boolean;
+  isCurrentAnomaly: boolean;
+  alertStatus: "normal" | "watch" | "alert";
   domain: string;
   mode: string;
   metricName: string;
   dimension: string;
   dimensionValue: string;
   anomalyCount: number;
+  recentAnomalyCount: number;
   lastAnomalyDate: string;
   latestY: number | null;
   latestYhat: number | null;
@@ -99,8 +107,6 @@ export type DashboardSections = {
   detections: AnalysisRecord[];
   diagnoses: AnalysisRecord[];
   groups: DashboardGroup[];
-  featuredDetection: AnalysisRecord | null;
-  featuredDiagnosis: AnalysisRecord | null;
 };
 
 export type ThemeSummary = {
@@ -114,27 +120,52 @@ export type ThemeSummary = {
 
 export type PropertyThemeCell = {
   theme: string;
-  status: "anomaly" | "normal" | "missing";
+  status: "anomaly" | "watch" | "normal" | "missing";
   href: string;
+  label: string;
+  breachRate: number | null;
+  direction: "up" | "down" | "flat" | "unknown";
+  actual: number | null;
+  lower: number | null;
+  upper: number | null;
 };
 
 export type PropertyThemeRow = {
   propertyId: string;
   propertyName: string;
   themes: PropertyThemeCell[];
+  alertThemeCount: number;
+  maxBreachRate: number;
 };
 
 export type MainOverview = {
   stats: SummaryStats;
   themeSummaries: ThemeSummary[];
   propertyThemeMatrix: PropertyThemeRow[];
+  sessionsTrending: SessionsTrending;
+};
+
+export type SessionsTrendingItem = {
+  id: string;
+  propertyName: string;
+  score: number | null;
+  actual: number;
+  lower: number;
+  upper: number;
+  direction: "up" | "down";
+  href: string;
+};
+
+export type SessionsTrending = {
+  higher: SessionsTrendingItem[];
+  lower: SessionsTrendingItem[];
 };
 
 export type ThemeDetectionPage = {
   theme: string;
   detections: AnalysisRecord[];
   rows: AnalysisTableRow[];
-  featuredDetection: AnalysisRecord | null;
+  chartItems: AnalysisChartItem[];
 };
 
 export type DiagnosisPage = {
@@ -142,17 +173,49 @@ export type DiagnosisPage = {
   detection: AnalysisRecord | null;
   diagnoses: AnalysisRecord[];
   rows: AnalysisTableRow[];
-  featuredDiagnosis: AnalysisRecord | null;
+  chartItems: AnalysisChartItem[];
+};
+
+export type AnalysisChartItem = {
+  analysis: AnalysisRecord;
+  row: AnalysisTableRow;
 };
 
 export type ReportItem = AnalysisTableRow & {
   theme: string;
+  themeLabel: string;
+  reportDate: string;
+  headline: string;
+  body: string;
+  sentence: string;
+  diagnosisSentence: string;
+  absoluteDeviation: number | null;
+  breachRate: number | null;
   detectionHref?: string;
   diagnosisHref?: string;
   diagnosisCandidates: AnalysisTableRow[];
 };
 
+export type PropertySummaryReport = {
+  propertyName: string;
+  reportDate: string;
+  themeLabels: string[];
+  headline: string;
+  themeSummaries: Array<{
+    theme: string;
+    themeLabel: string;
+    metricName: string;
+    directionLabel: string;
+    breachRate: number | null;
+    detectionHref?: string;
+    diagnosisHref?: string;
+  }>;
+  diagnosisCandidates: AnalysisTableRow[];
+};
+
 export type ReportsPage = {
+  reportDate: string;
+  summaryReports: PropertySummaryReport[];
   propertyReports: Array<{
     propertyId: string;
     propertyName: string;

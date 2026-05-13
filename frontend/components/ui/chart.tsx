@@ -43,7 +43,9 @@ function ChartContainer({
         {...props}
       >
         <ChartStyle id={chartId} config={config} />
-        <RechartsPrimitive.ResponsiveContainer>{children}</RechartsPrimitive.ResponsiveContainer>
+        <RechartsPrimitive.ResponsiveContainer width="100%" height="100%">
+          {children}
+        </RechartsPrimitive.ResponsiveContainer>
       </div>
     </ChartContext.Provider>
   );
@@ -77,12 +79,14 @@ type ChartTooltipContentProps = {
     name?: unknown;
     value?: unknown;
   }>;
+  anomalyDates?: Set<string>;
   label?: React.ReactNode;
   className?: string;
 };
 
 function ChartTooltipContent({
   active,
+  anomalyDates,
   payload,
   label,
   className,
@@ -94,8 +98,13 @@ function ChartTooltipContent({
   }
 
   return (
-    <div className={cn("rounded-md border bg-card px-3 py-2 text-xs shadow-sm", className)}>
-      <div className="mb-1 font-medium text-foreground">{label}</div>
+    <div className={cn("rounded-lg border bg-card px-3 py-2 text-xs", className)}>
+      <div className="mb-1 flex items-center justify-between gap-4 font-medium text-foreground">
+        <span>{label}</span>
+        {typeof label === "string" && anomalyDates?.has(label) ? (
+          <span className="text-anomaly-foreground">Anomaly</span>
+        ) : null}
+      </div>
       <div className="grid gap-1">
         {payload.map((item) => {
           const key = String(item.dataKey || item.name);

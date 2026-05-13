@@ -20,7 +20,7 @@ export function SummaryCards({ stats }: { stats: SummaryStats }) {
               <CardTitle className="text-muted-foreground">{label}</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="serif-heading truncate text-3xl">
+              <div className="truncate text-3xl font-semibold tracking-[-0.03em]">
                 {typeof value === "number" ? formatNumber(value) : value}
               </div>
             </CardContent>

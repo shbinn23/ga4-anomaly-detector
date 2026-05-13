@@ -22,7 +22,7 @@ export function AnalysisTable({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="serif-heading text-2xl">{title}</CardTitle>
+        <CardTitle className="text-2xl font-semibold tracking-[-0.02em]">{title}</CardTitle>
       </CardHeader>
       <CardContent>
         <Table>
@@ -35,6 +35,7 @@ export function AnalysisTable({
               <TableHead>Dimension</TableHead>
               <TableHead>Dimension value</TableHead>
               <TableHead>Anomalies</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead>Last anomaly</TableHead>
               <TableHead>Latest y</TableHead>
               <TableHead>Latest yhat</TableHead>
@@ -45,7 +46,10 @@ export function AnalysisTable({
           </TableHeader>
           <TableBody>
             {rows.map((row) => (
-              <TableRow key={row.id}>
+              <TableRow
+                className={row.alertStatus === "alert" ? "bg-anomaly-muted/45 hover:bg-anomaly-muted/65" : undefined}
+                key={row.id}
+              >
                 <TableCell className="font-medium">{row.propertyName}</TableCell>
                 <TableCell className="font-medium">{row.domain}</TableCell>
                 <TableCell className="text-muted-foreground">{row.mode}</TableCell>
@@ -53,12 +57,19 @@ export function AnalysisTable({
                 <TableCell className="font-medium">{row.dimension}</TableCell>
                 <TableCell className="text-muted-foreground">{row.dimensionValue}</TableCell>
                 <TableCell>{formatNumber(row.anomalyCount)}</TableCell>
+                <TableCell>
+                  <Badge tone={row.alertStatus === "alert" ? "anomaly" : row.alertStatus === "watch" ? "warning" : "neutral"}>
+                    {row.alertStatus}
+                  </Badge>
+                </TableCell>
                 <TableCell>{row.lastAnomalyDate}</TableCell>
                 <TableCell>{formatNumber(row.latestY)}</TableCell>
                 <TableCell>{formatNumber(row.latestYhat)}</TableCell>
-                <TableCell>{formatPercent(row.latestDeviation)}</TableCell>
+                <TableCell className={row.alertStatus === "alert" ? "font-semibold text-anomaly-foreground" : undefined}>
+                  {formatPercent(row.latestDeviation)}
+                </TableCell>
                 <TableCell>
-                  <Badge tone={row.direction === "unknown" ? "neutral" : row.direction === "flat" ? "success" : "warning"}>
+                  <Badge tone={row.alertStatus === "alert" ? "anomaly" : row.direction === "unknown" ? "neutral" : row.direction === "flat" ? "success" : "warning"}>
                     {row.direction}
                   </Badge>
                 </TableCell>

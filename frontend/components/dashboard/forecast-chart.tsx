@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import {
   Area,
   CartesianGrid,
@@ -33,21 +34,29 @@ const chartConfig = {
   },
 };
 
-export function ForecastChart({ analysis }: { analysis: AnalysisRecord | null }) {
+export function ForecastChart({
+  analysis,
+  meta,
+}: {
+  analysis: AnalysisRecord | null;
+  meta?: ReactNode;
+}) {
   const data = normalizeForecastData(analysis?.result.forecast_data);
   const anomalyPoints = data.filter((point) => point.is_anomaly);
+  const anomalyDates = new Set(anomalyPoints.map((point) => point.ds));
 
   return (
-    <Card>
+    <Card className="min-w-0 overflow-hidden">
       <CardHeader>
-        <CardTitle className="serif-heading text-2xl">Forecast trace</CardTitle>
+        <CardTitle className="text-2xl font-semibold tracking-[-0.02em]">Forecast trace</CardTitle>
         <CardDescription>
           Actual value, expected center line, confidence interval, and anomaly points.
         </CardDescription>
+        {meta}
       </CardHeader>
-      <CardContent>
+      <CardContent className="min-w-0 overflow-hidden">
         {data.length ? (
-          <ChartContainer config={chartConfig} className="min-h-80">
+          <ChartContainer config={chartConfig} className="h-72 w-full min-w-0 overflow-hidden">
             <ComposedChart data={data} margin={{ left: 4, right: 10, top: 12, bottom: 0 }}>
               <CartesianGrid vertical={false} stroke="var(--border)" />
               <XAxis
@@ -55,7 +64,8 @@ export function ForecastChart({ analysis }: { analysis: AnalysisRecord | null })
                 tickLine={false}
                 axisLine={false}
                 tickMargin={10}
-                minTickGap={28}
+                interval="preserveStartEnd"
+                minTickGap={36}
                 stroke="var(--muted-foreground)"
               />
               <YAxis
@@ -65,12 +75,12 @@ export function ForecastChart({ analysis }: { analysis: AnalysisRecord | null })
                 width={44}
                 stroke="var(--muted-foreground)"
               />
-              <ChartTooltip content={<ChartTooltipContent />} />
+              <ChartTooltip content={<ChartTooltipContent anomalyDates={anomalyDates} />} />
               <Area
                 dataKey="yhat_upper"
                 type="monotone"
                 fill="var(--chart-band)"
-                fillOpacity={0.18}
+                fillOpacity={0.16}
                 stroke="transparent"
                 dot={false}
                 activeDot={false}
@@ -105,7 +115,7 @@ export function ForecastChart({ analysis }: { analysis: AnalysisRecord | null })
                   y={point.y}
                   r={4}
                   fill="var(--chart-anomaly)"
-                  stroke="var(--card)"
+                  stroke="var(--anomaly-muted)"
                   strokeWidth={2}
                 />
               ))}

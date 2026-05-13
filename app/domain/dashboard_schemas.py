@@ -64,6 +64,11 @@ class DashboardResultItem(BaseModel):
     lower_bound: Optional[float] = None
     upper_bound: Optional[float] = None
     target_date: Optional[str] = None
+    target_point: Optional[DashboardForecastPoint] = None
+    is_current_anomaly: bool = False
+    alert_status: str = "normal"
+    historical_anomaly_count: int = 0
+    recent_anomaly_count: int = 0
     latest_point: Optional[DashboardForecastPoint] = None
     forecast_data: DashboardForecastData
 

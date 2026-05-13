@@ -1,4 +1,5 @@
 from pathlib import Path
+from datetime import date, timedelta
 from typing import Any, Dict, List, Optional
 
 from pydantic import ValidationError
@@ -44,8 +45,9 @@ class DashboardResultsService:
             forecast_data = self._forecast_data(result, f"sessions:{property_id}")
             item_id = f"sessions:detection:{property_id}"
             has_anomaly = any(forecast_data.is_anomaly)
-            latest_point = self._latest_point(forecast_data, result.get("updated_at"))
-            group_key = self._group_key(str(property_id), "sessions", "sessions", latest_point)
+            target_point = self._target_point(forecast_data, result.get("updated_at"))
+            alert_status = self._alert_status(forecast_data, target_point)
+            group_key = self._group_key(str(property_id), "sessions", "sessions", target_point)
             items.append(
                 self._item(
                     {
@@ -64,8 +66,13 @@ class DashboardResultsService:
                         "has_anomaly": has_anomaly,
                         "is_anomaly": bool(result.get("is_anomaly", has_anomaly)),
                         "actual_value": result.get("last_sessions"),
-                        "target_date": result.get("updated_at"),
-                        "latest_point": latest_point,
+                        "target_date": target_point.ds if target_point else result.get("updated_at"),
+                        "target_point": target_point,
+                        "is_current_anomaly": bool(target_point.is_anomaly) if target_point else False,
+                        "alert_status": alert_status,
+                        "historical_anomaly_count": sum(1 for value in forecast_data.is_anomaly if value),
+                        "recent_anomaly_count": self._recent_anomaly_count(forecast_data, target_point),
+                        "latest_point": target_point,
                         "forecast_data": forecast_data,
                     },
                     f"sessions:{property_id}",
@@ -85,8 +92,9 @@ class DashboardResultsService:
                 forecast_data = self._forecast_data(result, f"channel:{property_id}:{dimension_value}")
                 item_id = f"sessions:diagnosis:{property_id}:{dimension_value}"
                 has_anomaly = any(forecast_data.is_anomaly)
-                latest_point = self._latest_point(forecast_data, result.get("updated_at"))
-                group_key = self._group_key(str(property_id), "sessions", "sessions", latest_point)
+                target_point = self._target_point(forecast_data, result.get("updated_at"))
+                alert_status = self._alert_status(forecast_data, target_point)
+                group_key = self._group_key(str(property_id), "sessions", "sessions", target_point)
                 items.append(
                     self._item(
                         {
@@ -105,8 +113,13 @@ class DashboardResultsService:
                             "has_anomaly": has_anomaly,
                             "is_anomaly": bool(result.get("is_anomaly", has_anomaly)),
                             "actual_value": result.get("last_sessions"),
-                            "target_date": result.get("updated_at"),
-                            "latest_point": latest_point,
+                            "target_date": target_point.ds if target_point else result.get("updated_at"),
+                            "target_point": target_point,
+                            "is_current_anomaly": bool(target_point.is_anomaly) if target_point else False,
+                            "alert_status": alert_status,
+                            "historical_anomaly_count": sum(1 for value in forecast_data.is_anomaly if value),
+                            "recent_anomaly_count": self._recent_anomaly_count(forecast_data, target_point),
+                            "latest_point": target_point,
                             "forecast_data": forecast_data,
                         },
                         f"channel:{property_id}:{dimension_value}",
@@ -131,8 +144,9 @@ class DashboardResultsService:
             )
             dimension, dimension_value = self._representative_dimension(result.mode, result.dimensions)
             has_anomaly = any(forecast_data.is_anomaly)
-            latest_point = self._latest_point(forecast_data, result.target_date)
-            group_key = self._group_key(result.property_id, result.domain, result.metric_name, latest_point)
+            target_point = self._target_point(forecast_data, result.target_date)
+            alert_status = self._alert_status(forecast_data, target_point)
+            group_key = self._group_key(result.property_id, result.domain, result.metric_name, target_point)
             item = self._item(
                 {
                     "id": str(key),
@@ -152,8 +166,13 @@ class DashboardResultsService:
                     "actual_value": result.actual_value,
                     "lower_bound": result.lower_bound,
                     "upper_bound": result.upper_bound,
-                    "target_date": result.target_date,
-                    "latest_point": latest_point,
+                    "target_date": target_point.ds if target_point else result.target_date,
+                    "target_point": target_point,
+                    "is_current_anomaly": bool(target_point.is_anomaly) if target_point else False,
+                    "alert_status": alert_status,
+                    "historical_anomaly_count": sum(1 for value in forecast_data.is_anomaly if value),
+                    "recent_anomaly_count": self._recent_anomaly_count(forecast_data, target_point),
+                    "latest_point": target_point,
                     "forecast_data": forecast_data,
                 },
                 f"generic:{key}",
@@ -170,7 +189,7 @@ class DashboardResultsService:
         except ValidationError as exc:
             raise InfrastructureError(f"Invalid forecast_data for {context}: {exc}") from exc
 
-    def _latest_point(
+    def _target_point(
         self,
         forecast_data: DashboardForecastData,
         target_date: Optional[str],
@@ -189,15 +208,53 @@ class DashboardResultsService:
             is_anomaly=forecast_data.is_anomaly[index],
         )
 
+    def _recent_anomaly_count(
+        self,
+        forecast_data: DashboardForecastData,
+        target_point: Optional[DashboardForecastPoint],
+    ) -> int:
+        if not target_point or target_point.ds not in forecast_data.ds:
+            return 0
+        try:
+            target_day = date.fromisoformat(target_point.ds)
+        except ValueError:
+            index = forecast_data.ds.index(target_point.ds)
+            start = max(0, index - 6)
+            return sum(1 for value in forecast_data.is_anomaly[start : index + 1] if value)
+
+        start_day = target_day - timedelta(days=6)
+        count = 0
+        for point_date, is_anomaly in zip(forecast_data.ds, forecast_data.is_anomaly):
+            try:
+                current_day = date.fromisoformat(point_date)
+            except ValueError:
+                continue
+            if start_day <= current_day <= target_day and is_anomaly:
+                count += 1
+        return count
+
+    def _alert_status(
+        self,
+        forecast_data: DashboardForecastData,
+        target_point: Optional[DashboardForecastPoint],
+    ) -> str:
+        if not target_point:
+            return "normal"
+        if target_point.is_anomaly:
+            return "alert"
+        if self._recent_anomaly_count(forecast_data, target_point) >= 2:
+            return "watch"
+        return "normal"
+
     def _group_key(
         self,
         property_id: Optional[str],
         domain: str,
         metric_name: str,
-        latest_point: Optional[DashboardForecastPoint],
+        target_point: Optional[DashboardForecastPoint],
     ) -> str:
-        latest_date = latest_point.ds if latest_point else ""
-        return ":".join([property_id or "", domain, metric_name, latest_date])
+        target_date = target_point.ds if target_point else ""
+        return ":".join([property_id or "", domain, metric_name, target_date])
 
     def _representative_dimension(
         self,
