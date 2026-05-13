@@ -81,3 +81,24 @@ class JSONStorage(BaseStorage):
         except Exception as e:
             logger.error(f"채널 분석 저장 실패: {str(e)}")
             raise InfrastructureError(f"Channel analysis storage failed: {str(e)}")
+
+    def save_generic_analysis(self, key: str, data: dict):
+        """범용 단일 메트릭 분석 결과를 저장합니다."""
+        path = self.path.parent / "generic_analysis_db.json"
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+
+            db = {}
+            if path.exists():
+                with open(path, "r", encoding="utf-8") as f:
+                    db = json.load(f)
+
+            db[key] = data
+
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(db, f, ensure_ascii=False, indent=4)
+
+            logger.info(f"Successfully saved generic analysis: {key}")
+        except Exception as e:
+            logger.error(f"범용 분석 저장 실패: {str(e)}")
+            raise InfrastructureError(f"Generic analysis storage failed: {str(e)}")

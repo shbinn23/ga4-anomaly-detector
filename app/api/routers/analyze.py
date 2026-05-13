@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends
+from ...domain.generic_schemas import GenericAnalysisRequest, GenericAnalysisResponse
 from ...domain.schemas import AnomalyRequest, BatchAnomalyRequest, ChannelUpdateTask
 from ...services.anomaly_service import AnomalyService
-from ...core.dependencies import get_anomaly_service
+from ...services.timeseries_analysis_service import TimeSeriesAnalysisService
+from ...core.dependencies import get_anomaly_service, get_timeseries_analysis_service
 
 # 라우터 인스턴스는 파일 내에서 단 한 번만 생성합니다.
 router = APIRouter()
@@ -19,6 +21,13 @@ async def analyze_batch(
         service: AnomalyService = Depends(get_anomaly_service)
 ):
     return service.run_batch_analysis(payload)
+
+@router.post("/analyze/generic", response_model=GenericAnalysisResponse)
+async def analyze_generic(
+        payload: GenericAnalysisRequest,
+        service: TimeSeriesAnalysisService = Depends(get_timeseries_analysis_service)
+):
+    return service.run_generic_analysis(payload)
 
 @router.post("/update-channels")
 async def update_channels(

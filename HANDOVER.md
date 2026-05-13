@@ -496,4 +496,205 @@ Body (JSON):
 
 ---
 
+## 14. 2026-05-13 브랜치 업데이트 — Generic Timeseries / Ecommerce / Local n8n
+
+> 현재 내용은 `generic-timeseries-infra` 브랜치 기준이다.
+> 운영 `main` 반영 전에는 PR 리뷰 및 운영 서버 리소스 검토가 필요하다.
+
+### 14-1. 추가된 핵심 방향
+
+세션 중심 구조를 유지하면서, 이커머스/이벤트/매출 등으로 확장 가능한 generic 단일 시계열 분석 인프라를 추가했다.
+
+핵심 원칙:
+
+```text
+어떤 dimension/metric 조합이 들어오더라도,
+서비스/정규화 계층이 이를 표준 단일 시계열 분석 task로 변환한다.
+
+ML 엔진은 dimension/metric의 의미나 개수를 알지 않고,
+항상 동일한 ds/y 기반 단일 로직으로 예측값과 신뢰구간을 산출한다.
+```
+
+현재 구현 범위:
+
+- 단일 metric + 단일 dimension 조합 generic 분석 구현
+- 여러 metric/dimension 조합 자동 분해는 다음 단계
+- 기존 세션 API와 채널 API는 유지
+- 신규 generic API는 병렬 추가
+
+### 14-2. 추가된 API
+
+```text
+POST /api/v1/analyze/generic
+```
+
+요청 예시:
+
+```json
+{
+  "domain": "ecommerce",
+  "mode": "detection",
+  "property_id": "123456789",
+  "property_name": "KR Commerce Shop",
+  "metric_name": "eventCount",
+  "dimensions": {},
+  "target_events": ["view_item", "add_to_cart", "begin_checkout", "purchase"],
+  "series": [
+    { "date": "2026-05-01", "value": 1200 },
+    { "date": "2026-05-02", "value": 1320 }
+  ]
+}
+```
+
+응답은 기존 대시보드 차트 계약을 유지한다.
+
+```text
+forecast_data.ds
+forecast_data.y
+forecast_data.yhat
+forecast_data.yhat_lower
+forecast_data.yhat_upper
+```
+
+Detection에서 이상이 감지되고 `target_events`가 있으면 n8n 재호출용 `next_action`을 반환한다.
+
+### 14-3. 추가된 주요 파일
+
+```text
+app/domain/generic_schemas.py
+app/domain/timeseries.py
+app/services/timeseries_normalizer.py
+app/services/timeseries_analysis_service.py
+tests/unit/test_timeseries_normalizer.py
+tests/unit/test_timeseries_analysis_service.py
+pytest.ini
+WORKLOG.md
+```
+
+### 14-4. 저장 파일
+
+기존:
+
+```text
+data/results_db.json
+data/channel_anomaly_db.json
+```
+
+추가:
+
+```text
+data/generic_analysis_db.json
+```
+
+`generic_analysis_db.json`은 Docker volume `ga4_data` 안에 생성되며 git 추적 대상이 아니다.
+
+### 14-5. 이커머스 2단계 대시보드
+
+대시보드에 `ECOMMERCE EVENTS` 카드가 실제 기능으로 연결되었다.
+
+```text
+Overview
+  -> ECOMMERCE EVENTS
+    -> Detail to Ecommerce
+      -> Detection 이상 프로퍼티 그래프
+        -> Analyze Events
+          -> eventName별 Diagnosis 그래프
+```
+
+세션 상세와 이커머스 상세는 공통 `render_analysis_grid()`를 사용한다.
+
+차트 렌더러는 기존 `render_anomaly_chart()`를 그대로 사용한다.
+
+### 14-6. n8n Workflow 파일
+
+```text
+n8n/workflows/Monitoring.json
+n8n/workflows/Monitoring.generic-ecommerce.json
+n8n/workflows/Monitoring.local-docker.json
+n8n/workflows/README.md
+```
+
+- `Monitoring.json`: 원본 export, 세션/채널 흐름
+- `Monitoring.generic-ecommerce.json`: 운영 서버 endpoint 기준 generic ecommerce 추가본
+- `Monitoring.local-docker.json`: 로컬 Docker 테스트용, FastAPI endpoint가 `http://api:8000`을 바라봄
+
+### 14-7. 로컬 Docker Compose 구성
+
+기존 API/Dashboard에 n8n 로컬 테스트 컨테이너를 추가했다.
+
+```text
+API:       http://localhost:8000
+Dashboard: http://localhost:8501
+n8n:       http://localhost:5678
+```
+
+Compose 서비스:
+
+```text
+api
+dashboard
+n8n
+```
+
+로컬 n8n은 같은 Docker network에서 FastAPI를 아래 주소로 호출한다.
+
+```text
+http://api:8000
+```
+
+n8n workflow 파일은 컨테이너 내부에 read-only mount 된다.
+
+```text
+/files/workflows
+```
+
+### 14-8. 로컬 실행 및 검증
+
+```bash
+docker compose up --build -d
+```
+
+상태 확인:
+
+```bash
+docker compose ps
+curl http://localhost:8000/
+```
+
+테스트:
+
+```bash
+venv/bin/pytest -q
+```
+
+현재 검증 결과:
+
+```text
+pytest: 7 passed
+docker compose config: passed
+API health: healthy
+Dashboard: HTTP 200
+n8n: HTTP 200
+n8n -> API internal call: http://api:8000/ OK
+```
+
+### 14-9. 로컬 n8n 주의사항
+
+- n8n Cloud credential은 로컬 Docker n8n으로 자동 이전되지 않는다.
+- Google Analytics OAuth credential은 로컬 n8n에서 다시 연결해야 한다.
+- 로컬 n8n에 `Monitoring.local-docker.json`을 import해서 테스트한다.
+- 현재 로컬 n8n DB에 workflow가 중복 import될 수 있으므로 UI에서 중복 workflow를 하나 정리하는 것이 좋다.
+- self-host n8n은 로컬 개발/테스트에는 유용하지만, 운영에서는 보안/백업/업데이트/credential 관리를 직접 책임져야 한다.
+
+### 14-10. 운영 반영 전 체크리스트
+
+- `docker-compose.yml`의 n8n 서비스는 로컬 테스트용인지 운영 포함인지 결정 필요
+- GCP e2-micro 1GB 환경에 n8n까지 함께 올리는 것은 메모리상 위험할 수 있음
+- 운영에서는 n8n Cloud 유지 또는 별도 인스턴스 분리 권장
+- `/api/v1/reset` 포함 모든 API 인증 부재는 여전히 보안 리스크
+- JSON 저장소의 동시 쓰기 race condition은 여전히 구조적 리스크
+- `generic_analysis_db.json` 저장/대시보드 표시 흐름은 운영 데이터로 추가 검증 필요
+
+---
+
 *문서 끝 — 이 파일을 기반으로 작업을 이어받아 주세요.*

@@ -3,6 +3,7 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 DB_FILE = BASE_DIR / "data" / "results_db.json"
+GENERIC_DB_FILE = BASE_DIR / "data" / "generic_analysis_db.json"
 
 
 def load_anomaly_data() -> dict:
@@ -15,8 +16,34 @@ def load_anomaly_data() -> dict:
         return {}
 
 
+def load_generic_analysis_data() -> dict:
+    if not GENERIC_DB_FILE.exists():
+        return {}
+    try:
+        with open(GENERIC_DB_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
 def filter_anomalies(data: dict) -> dict:
     return {k: v for k, v in data.items() if v.get("is_anomaly") is True}
+
+
+def filter_generic_results(data: dict, domain: str, mode: str) -> dict:
+    return {
+        k: v
+        for k, v in data.items()
+        if v.get("domain") == domain and v.get("mode") == mode
+    }
+
+
+def filter_property_results(data: dict, property_id: str) -> dict:
+    return {
+        k: v
+        for k, v in data.items()
+        if v.get("property_id") == property_id
+    }
 
 
 def compute_change_rate(result: dict) -> float:

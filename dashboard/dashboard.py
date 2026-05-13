@@ -5,7 +5,15 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-from utils.data_loader import load_anomaly_data, get_trending, filter_anomalies, compute_change_rate
+from utils.data_loader import (
+    compute_change_rate,
+    filter_anomalies,
+    filter_generic_results,
+    filter_property_results,
+    get_trending,
+    load_anomaly_data,
+    load_generic_analysis_data,
+)
 from components.charts import render_sparkline, render_anomaly_chart
 from components.styles import apply_styles
 st.set_page_config(page_title="GA4 AI Control Center", layout="wide", initial_sidebar_state="collapsed")
@@ -83,8 +91,44 @@ def render_events_card():
 def render_revenue_card():
     render_pending_card("REVENUE")
 
-def render_ecommerce_card():
-    render_pending_card("ECOMMERCE EVENTS")
+def render_ecommerce_card(generic_data):
+    detection_results = filter_generic_results(generic_data, domain="ecommerce", mode="detection")
+    anomalies = filter_anomalies(detection_results)
+
+    with st.container(border=True, height=420):
+        st.markdown("<h5 style='margin-bottom:0;'>ECOMMERCE EVENTS</h5>", unsafe_allow_html=True)
+        st.write("")
+
+        col_metrics, col_charts = st.columns([1.4, 2])
+
+        with col_metrics:
+            total_events = sum([int(v.get("actual_value", 0)) for v in detection_results.values()])
+            st.metric("Total Events", f"{total_events:,}", f"{len(anomalies)} anomalies")
+            st.metric("Properties", f"{len(detection_results):,}")
+            st.metric("Mode", "2-step")
+
+        with col_charts:
+            sample = list(detection_results.values())[0] if detection_results else None
+            sample_y = sample["forecast_data"]["y"][-14:] if sample else [0] * 10
+            sample_rate = compute_generic_change_rate(sample) if sample else 0
+            st.caption("Integrated Index")
+            st.plotly_chart(
+                render_sparkline(sample_y, is_down=sample_rate < 0, height=65),
+                use_container_width=True,
+                config=_SPARK_CONFIG,
+                key="spark_ecommerce_integrated",
+            )
+            st.caption("Diagnosis Trigger")
+            st.plotly_chart(
+                render_sparkline(sample_y[-7:], is_down=bool(anomalies), height=65),
+                use_container_width=True,
+                config=_SPARK_CONFIG,
+                key="spark_ecommerce_trigger",
+            )
+
+        st.write("")
+        if st.button("Detail to Ecommerce", use_container_width=True, key="btn_ecommerce_detail"):
+            navigate_to('ecommerce_detail')
 
 def render_trending_sidebar(all_data):
     with st.container(border=True, height=860):
@@ -111,7 +155,59 @@ def render_trending_sidebar(all_data):
             st.plotly_chart(fig, use_container_width=True, config=_SPARK_CONFIG, key=f"trend_narrow_{pid}")
             st.markdown("<hr style='margin: 0.2em 0 0.8em 0; opacity: 0.3;'/>", unsafe_allow_html=True)
 
-def view_overview(all_data):
+def compute_generic_change_rate(result: dict) -> float:
+    if not result:
+        return 0.0
+    actual = result.get("actual_value", 0)
+    yhat_list = result.get("forecast_data", {}).get("yhat", [])
+    yhat = yhat_list[-1] if yhat_list else 0
+    if yhat == 0:
+        return 0.0
+    return round((actual - yhat) / yhat * 100, 1)
+
+
+def render_analysis_grid(
+    items: list,
+    key_prefix: str,
+    title_getter,
+    id_getter,
+    value_getter,
+    rate_getter,
+    button_label: str,
+    next_view: str,
+):
+    """공통 forecast_data 계약을 쓰는 상세 분석 카드 그리드."""
+    for i in range(0, len(items), 3):
+        cols = st.columns(3)
+        for j in range(3):
+            if i + j >= len(items):
+                break
+            item_key, res = items[i + j]
+            item_id = id_getter(item_key, res)
+            rate = rate_getter(res)
+
+            with cols[j]:
+                with st.container(border=True):
+                    chart_df = pd.DataFrame(res["forecast_data"])
+                    fig = render_anomaly_chart(chart_df, title_getter(item_key, res))
+                    st.plotly_chart(
+                        fig,
+                        use_container_width=True,
+                        config={"displayModeBar": False},
+                        key=f"{key_prefix}_chart_{item_key}",
+                    )
+
+                    st.markdown(
+                        f"<div style='font-size:0.9rem'>ID: `{item_id}` | 실제: **{value_getter(res):,}** | {colored_rate(rate)}</div>",
+                        unsafe_allow_html=True,
+                    )
+
+                    st.write("")
+                    if st.button(button_label, use_container_width=True, key=f"{key_prefix}_button_{item_key}"):
+                        navigate_to(next_view, prop_id=item_id)
+
+
+def view_overview(all_data, generic_data):
     st.markdown("<h3>GA4 Traffic Board</h3>", unsafe_allow_html=True)
     st.write("")
 
@@ -124,7 +220,7 @@ def view_overview(all_data):
 
         r2c1, r2c2 = st.columns(2)
         with r2c1: render_revenue_card()
-        with r2c2: render_ecommerce_card()
+        with r2c2: render_ecommerce_card(generic_data)
 
     with side_col:
         render_trending_sidebar(all_data)
@@ -152,28 +248,16 @@ def view_sessions_detail(all_data):
     st.write("")
 
     items = list(anomalies.items())
-    for i in range(0, len(items), 3):
-        cols = st.columns(3)
-        for j in range(3):
-            if i + j >= len(items): break
-            prop_id, res = items[i + j]
-            rate = compute_change_rate(res)
-
-            with cols[j]:
-                with st.container(border=True):
-                    chart_df = pd.DataFrame(res["forecast_data"])
-                    fig = render_anomaly_chart(chart_df, res["property_name"])
-                    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False}, key=f"detail_sessions_chart_{prop_id}")
-
-                    st.markdown(
-                        f"<div style='font-size:0.9rem'>ID: `{prop_id}` | 실제: **{res['last_sessions']:,}** | {colored_rate(rate)}</div>",
-                        unsafe_allow_html=True,
-                    )
-
-                    # [핵심] Level 3로 진입하기 위한 프로퍼티별 딥다이브 버튼
-                    st.write("")
-                    if st.button(f"Analyze Channels 〉", use_container_width=True, key=f"btn_analyze_{prop_id}"):
-                        navigate_to('channel_detail', prop_id=prop_id)
+    render_analysis_grid(
+        items=items,
+        key_prefix="detail_sessions",
+        title_getter=lambda prop_id, res: res["property_name"],
+        id_getter=lambda prop_id, res: prop_id,
+        value_getter=lambda res: int(res["last_sessions"]),
+        rate_getter=compute_change_rate,
+        button_label="Analyze Channels 〉",
+        next_view="channel_detail",
+    )
 
 
 # =====================================================================
@@ -264,19 +348,142 @@ def view_channel_detail(all_data, prop_id):
 
 
 # =====================================================================
+# Level 2: Ecommerce Detail (2-step Detection)
+# =====================================================================
+def view_ecommerce_detail(generic_data):
+    col_back, col_title = st.columns([1, 10])
+    with col_back:
+        if st.button("← Back", key="btn_back_to_overview_from_ecommerce"):
+            navigate_to('overview')
+    with col_title:
+        st.markdown("<h3 style='margin-top:-10px;'>Ecommerce Events Anomaly Detail</h3>", unsafe_allow_html=True)
+
+    st.divider()
+
+    detection_results = filter_generic_results(generic_data, domain="ecommerce", mode="detection")
+    anomalies = filter_anomalies(detection_results)
+    if not anomalies:
+        st.success("현재 모든 이커머스 통합 지수가 정상 범위를 유지하고 있습니다.")
+        return
+
+    st.subheader(f"이커머스 통합 지수 이상 감지 · {len(anomalies)}건")
+    st.write("")
+
+    items = list(anomalies.items())
+    render_analysis_grid(
+        items=items,
+        key_prefix="detail_ecommerce",
+        title_getter=lambda analysis_id, res: res.get("property_name") or res.get("property_id", analysis_id),
+        id_getter=lambda analysis_id, res: res.get("property_id", analysis_id),
+        value_getter=lambda res: int(res.get("actual_value", 0)),
+        rate_getter=compute_generic_change_rate,
+        button_label="Analyze Events 〉",
+        next_view="ecommerce_event_detail",
+    )
+
+
+# =====================================================================
+# Level 3: Ecommerce Event Detail (2-step Diagnosis)
+# =====================================================================
+def view_ecommerce_event_detail(generic_data, prop_id):
+    col_back, col_title = st.columns([1, 10])
+    with col_back:
+        if st.button("← Back", key="btn_back_to_ecommerce"):
+            navigate_to('ecommerce_detail')
+    with col_title:
+        detection = filter_property_results(
+            filter_generic_results(generic_data, domain="ecommerce", mode="detection"),
+            prop_id,
+        )
+        prop_info = list(detection.values())[0] if detection else {}
+        prop_name = prop_info.get("property_name") or prop_id
+        st.markdown(f"<h3 style='margin-top:-10px;'>Ecommerce Event Insight: {prop_name}</h3>", unsafe_allow_html=True)
+
+    st.divider()
+
+    diagnosis_results = filter_property_results(
+        filter_generic_results(generic_data, domain="ecommerce", mode="diagnosis"),
+        prop_id,
+    )
+
+    if not diagnosis_results:
+        st.info(f"선택하신 ID(`{prop_id}`)에 대한 이벤트별 진단 데이터가 아직 적재되지 않았습니다.")
+        st.caption("Detection 이상 발생 후 n8n Diagnosis 호출 결과가 저장되면 표시됩니다.")
+        return
+
+    anomalous_events = {k: v for k, v in diagnosis_results.items() if v.get("is_anomaly")}
+    normal_events = {k: v for k, v in diagnosis_results.items() if not v.get("is_anomaly")}
+
+    st.subheader(f"Detected Event Anomalies ({len(anomalous_events)})")
+
+    if anomalous_events:
+        event_items = list(anomalous_events.items())
+        for i in range(0, len(event_items), 2):
+            cols = st.columns(2)
+            for j in range(2):
+                if i + j >= len(event_items):
+                    break
+                analysis_id, res = event_items[i + j]
+                event_name = res.get("dimensions", {}).get("eventName", analysis_id)
+
+                with cols[j]:
+                    with st.container(border=True):
+                        chart_df = pd.DataFrame(res["forecast_data"])
+                        fig = render_anomaly_chart(chart_df, f"Event: {event_name}")
+                        st.plotly_chart(
+                            fig,
+                            use_container_width=True,
+                            config={"displayModeBar": False},
+                            key=f"event_anom_{analysis_id}",
+                        )
+                        st.error(f"{event_name} 이벤트 이상 징후 감지")
+                        st.caption(f"최종 값: {int(res.get('actual_value', 0)):,}")
+    else:
+        st.success("모든 핵심 이벤트가 AI 예측 범위 내에서 안정적으로 작동하고 있습니다.")
+
+    if normal_events:
+        st.write("")
+        with st.expander("View Normal Events (Reference)"):
+            event_items = list(normal_events.items())
+            for i in range(0, len(event_items), 2):
+                cols = st.columns(2)
+                for j in range(2):
+                    if i + j >= len(event_items):
+                        break
+                    analysis_id, res = event_items[i + j]
+                    event_name = res.get("dimensions", {}).get("eventName", analysis_id)
+
+                    with cols[j]:
+                        chart_df = pd.DataFrame(res["forecast_data"])
+                        fig = render_anomaly_chart(chart_df, f"Normal: {event_name}")
+                        st.plotly_chart(
+                            fig,
+                            use_container_width=True,
+                            config={"displayModeBar": False},
+                            key=f"event_norm_{analysis_id}",
+                        )
+                        st.caption(f"{event_name} 정상")
+
+
+# =====================================================================
 # Main Router
 # =====================================================================
 def main():
     apply_styles()
     all_data = load_anomaly_data()
+    generic_data = load_generic_analysis_data()
 
     # Controller: 현재 상태에 따라 뷰를 렌더링
     if st.session_state.current_view == 'overview':
-        view_overview(all_data)
+        view_overview(all_data, generic_data)
     elif st.session_state.current_view == 'sessions_detail':
         view_sessions_detail(all_data)
     elif st.session_state.current_view == 'channel_detail':
         view_channel_detail(all_data, st.session_state.selected_property)
+    elif st.session_state.current_view == 'ecommerce_detail':
+        view_ecommerce_detail(generic_data)
+    elif st.session_state.current_view == 'ecommerce_event_detail':
+        view_ecommerce_event_detail(generic_data, st.session_state.selected_property)
 
 if __name__ == "__main__":
     main()
