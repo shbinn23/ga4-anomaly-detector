@@ -187,6 +187,6 @@ def test_reset_api_clears_all_analysis_stores(tmp_path):
         "generic_analysis_db.json",
         "results_db.json",
     ]
-    assert not storage.path.exists()
-    assert not (tmp_path / "channel_anomaly_db.json").exists()
-    assert not (tmp_path / "generic_analysis_db.json").exists()
+    assert storage.path.read_text(encoding="utf-8") == "{}"
+    assert (tmp_path / "channel_anomaly_db.json").read_text(encoding="utf-8") == "{}"
+    assert (tmp_path / "generic_analysis_db.json").read_text(encoding="utf-8") == "{}"

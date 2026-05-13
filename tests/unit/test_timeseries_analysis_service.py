@@ -1,4 +1,5 @@
 import pandas as pd
+import pytest
 
 from app.domain.generic_schemas import GenericAnalysisRequest
 from app.domain.timeseries import AnalysisResult, AnalysisTask
@@ -18,6 +19,26 @@ class FakeDetector:
 
     def check_anomaly(self, actual: float, lower: float, upper: float) -> bool:
         return bool(actual < lower or actual > upper)
+
+
+class ExplodingDetector:
+    def train_and_predict(self, df: pd.DataFrame) -> pd.DataFrame:
+        raise AssertionError("Prophet should not be called")
+
+    def check_anomaly(self, actual: float, lower: float, upper: float) -> bool:
+        raise AssertionError("Anomaly check should not be called")
+
+
+class BadBoundsDetector(FakeDetector):
+    def train_and_predict(self, df: pd.DataFrame) -> pd.DataFrame:
+        return pd.DataFrame(
+            {
+                "ds": df["ds"],
+                "yhat": [100, 100, 100],
+                "yhat_lower": [120, 120, 120],
+                "yhat_upper": [80, 80, 80],
+            }
+        )
 
 
 def test_generic_analysis_keeps_forecast_data_contract():
@@ -132,3 +153,120 @@ def test_detection_anomaly_returns_diagnosis_next_action():
         "dimensions": ["eventName"],
         "target_events": ["view_item", "add_to_cart", "purchase"],
     }
+
+
+def test_nan_or_inf_values_are_blocked_before_detector():
+    service = TimeSeriesAnalysisService(detector=ExplodingDetector())
+
+    for bad_value in [float("nan"), float("inf"), float("-inf")]:
+        with pytest.raises(ValueError, match="finite"):
+            service.run_single_metric_analysis(
+                AnalysisTask(
+                    analysis_id="bad",
+                    domain="generic",
+                    mode="detection",
+                    property_id="prop",
+                    property_name=None,
+                    metric_name="metric",
+                    dimensions={},
+                    series=[
+                        {"date": "2026-05-01", "value": 100},
+                        {"date": "2026-05-02", "value": bad_value},
+                    ],
+                )
+            )
+
+
+def test_duplicate_or_missing_ds_is_blocked_before_detector():
+    service = TimeSeriesAnalysisService(detector=ExplodingDetector())
+
+    with pytest.raises(ValueError, match="duplicate ds"):
+        service.run_single_metric_analysis(
+            AnalysisTask(
+                analysis_id="duplicate",
+                domain="generic",
+                mode="detection",
+                property_id="prop",
+                property_name=None,
+                metric_name="metric",
+                dimensions={},
+                series=[
+                    {"date": "2026-05-01", "value": 100},
+                    {"date": "2026-05-01", "value": 110},
+                ],
+            )
+        )
+
+    with pytest.raises(ValueError, match="missing ds"):
+        service.run_single_metric_analysis(
+            AnalysisTask(
+                analysis_id="missing",
+                domain="generic",
+                mode="detection",
+                property_id="prop",
+                property_name=None,
+                metric_name="metric",
+                dimensions={},
+                series=[
+                    {"date": "2026-05-01", "value": 100},
+                    {"date": "", "value": 110},
+                ],
+            )
+        )
+
+
+def test_insufficient_or_all_zero_series_is_blocked_before_detector():
+    service = TimeSeriesAnalysisService(detector=ExplodingDetector())
+
+    with pytest.raises(Exception):
+        AnalysisTask(
+            analysis_id="short",
+            domain="generic",
+            mode="detection",
+            property_id="prop",
+            property_name=None,
+            metric_name="metric",
+            dimensions={},
+            series=[
+                {"date": "2026-05-01", "value": 100},
+            ],
+        )
+
+    with pytest.raises(ValueError, match="all zero"):
+        service.run_single_metric_analysis(
+            AnalysisTask(
+                analysis_id="zero",
+                domain="generic",
+                mode="detection",
+                property_id="prop",
+                property_name=None,
+                metric_name="metric",
+                dimensions={},
+                series=[
+                    {"date": "2026-05-01", "value": 0},
+                    {"date": "2026-05-02", "value": 0},
+                ],
+            )
+        )
+
+
+def test_invalid_forecast_bounds_are_blocked():
+    service = TimeSeriesAnalysisService(detector=BadBoundsDetector())
+
+    with pytest.raises(ValueError, match="Forecast bounds"):
+        service.run_single_metric_analysis(
+            AnalysisTask(
+                analysis_id="bad-forecast",
+                domain="generic",
+                mode="detection",
+                property_id="prop",
+                property_name=None,
+                metric_name="metric",
+                dimensions={},
+                series=[
+                    {"date": "2026-05-01", "value": 100},
+                    {"date": "2026-05-02", "value": 110},
+                    {"date": "2026-05-03", "value": 120},
+                ],
+            )
+        )

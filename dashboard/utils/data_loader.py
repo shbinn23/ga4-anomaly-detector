@@ -1,10 +1,15 @@
 import json
+from json import JSONDecodeError
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 DB_FILE = BASE_DIR / "data" / "results_db.json"
 GENERIC_DB_FILE = BASE_DIR / "data" / "generic_analysis_db.json"
 CHANNEL_DB_FILE = BASE_DIR / "data" / "channel_anomaly_db.json"
+
+
+class DataLoadError(Exception):
+    pass
 
 
 def calculate_point_anomalies(forecast_data: dict) -> list:
@@ -32,44 +37,43 @@ def ensure_forecast_data_contract(result: dict) -> dict:
 
 
 def ensure_analysis_data_contract(data: dict) -> dict:
+    if not isinstance(data, dict):
+        raise DataLoadError("Analysis data must be a JSON object")
     return {
         key: ensure_forecast_data_contract(value)
         for key, value in data.items()
     }
 
 
-def load_anomaly_data() -> dict:
-    if not DB_FILE.exists():
+def _load_json_object(path: Path) -> dict:
+    if not path.exists() or path.stat().st_size == 0:
         return {}
     try:
-        with open(DB_FILE, "r", encoding="utf-8") as f:
-            return ensure_analysis_data_contract(json.load(f))
-    except Exception:
-        return {}
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except JSONDecodeError as e:
+        raise DataLoadError(f"Invalid JSON in {path.name}: {e}") from e
+    if not isinstance(data, dict):
+        raise DataLoadError(f"{path.name} must contain a JSON object")
+    return data
+
+
+def load_anomaly_data() -> dict:
+    data = _load_json_object(DB_FILE)
+    return ensure_analysis_data_contract(data)
 
 
 def load_generic_analysis_data() -> dict:
-    if not GENERIC_DB_FILE.exists():
-        return {}
-    try:
-        with open(GENERIC_DB_FILE, "r", encoding="utf-8") as f:
-            return ensure_analysis_data_contract(json.load(f))
-    except Exception:
-        return {}
+    data = _load_json_object(GENERIC_DB_FILE)
+    return ensure_analysis_data_contract(data)
 
 
 def load_channel_analysis_data() -> dict:
-    if not CHANNEL_DB_FILE.exists():
-        return {}
-    try:
-        with open(CHANNEL_DB_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        return {
-            property_id: ensure_analysis_data_contract(channels)
-            for property_id, channels in data.items()
-        }
-    except Exception:
-        return {}
+    data = _load_json_object(CHANNEL_DB_FILE)
+    return {
+        property_id: ensure_analysis_data_contract(channels)
+        for property_id, channels in data.items()
+    }
 
 
 def filter_anomalies(data: dict) -> dict:

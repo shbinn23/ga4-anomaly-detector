@@ -1,11 +1,22 @@
 import json
 import logging
+import os
+import tempfile
+import threading
+from datetime import date, datetime
 from pathlib import Path
 from .storage import BaseStorage
 from ..core.config import settings
 from ..domain.exceptions import InfrastructureError
 
 logger = logging.getLogger(__name__)
+_JSON_STORAGE_LOCK = threading.RLock()
+
+
+def _json_default(value):
+    if isinstance(value, (date, datetime)):
+        return value.isoformat()
+    raise TypeError(f"Object of type {type(value).__name__} is not JSON serializable")
 
 class JSONStorage(BaseStorage):
     """BaseStorage 인터페이스의 JSON 파일 구현체입니다."""
@@ -15,16 +26,32 @@ class JSONStorage(BaseStorage):
         self.path = settings.DATA_DIR / settings.DB_FILE_NAME
 
     def _write_json(self, path: Path, data: dict):
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=4, default=str)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        fd, temp_name = tempfile.mkstemp(
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            dir=path.parent,
+            text=True,
+        )
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=4, default=_json_default)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(temp_name, path)
+        except Exception:
+            try:
+                os.unlink(temp_name)
+            except FileNotFoundError:
+                pass
+            raise
 
     def save(self, key: str, data: dict):
         try:
-            db = self.load_all()
-            db[key] = data
-            # 디렉토리가 없을 경우를 대비해 생성 시도
-            self.path.parent.mkdir(parents=True, exist_ok=True)
-            self._write_json(self.path, db)
+            with _JSON_STORAGE_LOCK:
+                db = self._load_from_path(self.path)
+                db[key] = data
+                self._write_json(self.path, db)
             logger.info(f"Successfully saved data for property: {key}")
         except Exception as e:
             logger.error(f"JSON 저장 실패: {str(e)}")
@@ -43,10 +70,10 @@ class JSONStorage(BaseStorage):
     def save_batch(self, data_map: dict):
         """여러 프로퍼티의 분석 결과를 한 번의 I/O로 영속화합니다."""
         try:
-            db = self.load_all()
-            db.update(data_map)
-            self.path.parent.mkdir(parents=True, exist_ok=True)
-            self._write_json(self.path, db)
+            with _JSON_STORAGE_LOCK:
+                db = self._load_from_path(self.path)
+                db.update(data_map)
+                self._write_json(self.path, db)
             logger.info(f"Successfully saved batch update for {len(data_map)} properties.")
         except Exception as e:
             logger.error(f"JSON 배치 저장 실패: {str(e)}")
@@ -68,10 +95,10 @@ class JSONStorage(BaseStorage):
             self.path.parent / "generic_analysis_db.json",
         ]
         try:
-            cleared = []
-            for path in paths:
-                if path.exists():
-                    path.unlink()
+            with _JSON_STORAGE_LOCK:
+                cleared = []
+                for path in paths:
+                    self._write_json(path, {})
                     cleared.append(path.name)
             logger.info(f"Analysis database files cleared: {cleared}")
             return cleared
@@ -82,19 +109,10 @@ class JSONStorage(BaseStorage):
         """채널 분석 결과를 기존 데이터에 병합하여 영속화합니다."""
         path = self.path.parent / "channel_anomaly_db.json"
         try:
-            path.parent.mkdir(parents=True, exist_ok=True)
-
-            # 1. 기존 데이터 로드 (파일이 없으면 빈 딕셔너리로 초기화)
-            db = {}
-            if path.exists():
-                with open(path, "r", encoding="utf-8") as f:
-                    db = json.load(f)
-
-            # 2. 새로운 데이터 병합 (Update)
-            db.update(data)
-
-            # 3. 전체 데이터 다시 덮어쓰기 (이제 기존 데이터가 날아가지 않음)
-            self._write_json(path, db)
+            with _JSON_STORAGE_LOCK:
+                db = self._load_from_path(path)
+                db.update(data)
+                self._write_json(path, db)
 
             logger.info(f"Successfully updated channel analysis. Total properties in DB: {len(db)}")
         except Exception as e:
@@ -105,18 +123,21 @@ class JSONStorage(BaseStorage):
         """범용 단일 메트릭 분석 결과를 저장합니다."""
         path = self.path.parent / "generic_analysis_db.json"
         try:
-            path.parent.mkdir(parents=True, exist_ok=True)
-
-            db = {}
-            if path.exists():
-                with open(path, "r", encoding="utf-8") as f:
-                    db = json.load(f)
-
-            db[key] = data
-
-            self._write_json(path, db)
+            with _JSON_STORAGE_LOCK:
+                db = self._load_from_path(path)
+                db[key] = data
+                self._write_json(path, db)
 
             logger.info(f"Successfully saved generic analysis: {key}")
         except Exception as e:
             logger.error(f"범용 분석 저장 실패: {str(e)}")
             raise InfrastructureError(f"Generic analysis storage failed: {str(e)}")
+
+    def _load_from_path(self, path: Path) -> dict:
+        if not path.exists() or path.stat().st_size == 0:
+            return {}
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        if not isinstance(data, dict):
+            raise InfrastructureError(f"Storage file must contain a JSON object: {path.name}")
+        return data

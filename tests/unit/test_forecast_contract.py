@@ -1,5 +1,6 @@
 from app.domain.schemas import ForecastData
-from dashboard.utils.data_loader import ensure_forecast_data_contract
+from dashboard.utils import data_loader
+from dashboard.utils.data_loader import DataLoadError, ensure_forecast_data_contract
 
 
 def test_legacy_forecast_data_is_recalculated_for_dashboard_loader():
@@ -38,3 +39,27 @@ def test_dashboard_keeps_point_anomaly_calculation_in_data_loader():
     assert "calculate_point_anomalies" not in source
     assert "yhat_lower" not in source
     assert "yhat_upper" not in source
+
+
+def test_dashboard_loader_does_not_hide_broken_json(tmp_path, monkeypatch):
+    broken_file = tmp_path / "results_db.json"
+    broken_file.write_text("{bad json", encoding="utf-8")
+    monkeypatch.setattr(data_loader, "DB_FILE", broken_file)
+
+    try:
+        data_loader.load_anomaly_data()
+    except DataLoadError as e:
+        assert "Invalid JSON" in str(e)
+    else:
+        raise AssertionError("Broken JSON should raise DataLoadError")
+
+
+def test_dashboard_loader_treats_missing_and_empty_files_as_empty(tmp_path, monkeypatch):
+    missing_file = tmp_path / "missing.json"
+    monkeypatch.setattr(data_loader, "DB_FILE", missing_file)
+    assert data_loader.load_anomaly_data() == {}
+
+    empty_file = tmp_path / "empty.json"
+    empty_file.write_text("", encoding="utf-8")
+    monkeypatch.setattr(data_loader, "DB_FILE", empty_file)
+    assert data_loader.load_anomaly_data() == {}

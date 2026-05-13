@@ -32,7 +32,9 @@ class TimeSeriesAnalysisService:
 
     def run_single_metric_analysis(self, task: AnalysisTask) -> AnalysisResult:
         df = TimeSeriesNormalizer.to_dataframe(task)
+        self._validate_input_dataframe(df)
         forecast = self.detector.train_and_predict(df)
+        self._validate_forecast_dataframe(forecast)
 
         actual = float(df["y"].iloc[-1])
         lower = float(forecast["yhat_lower"].iloc[-1])
@@ -66,6 +68,41 @@ class TimeSeriesAnalysisService:
 
     def analyze(self, task: AnalysisTask) -> AnalysisResult:
         return self.run_single_metric_analysis(task)
+
+    def _validate_input_dataframe(self, df):
+        required_columns = {"ds", "y"}
+        missing_columns = required_columns - set(df.columns)
+        if missing_columns:
+            raise ValueError(f"Missing time series columns: {sorted(missing_columns)}")
+        if df["ds"].isna().any():
+            raise ValueError("Time series contains missing ds values")
+        if df["y"].isna().any():
+            raise ValueError("Time series y values must be finite")
+        if df["ds"].duplicated().any():
+            raise ValueError("Time series contains duplicate ds values")
+
+        numeric_y = df["y"]
+        if not numeric_y.map(lambda value: isinstance(value, (int, float))).all():
+            raise ValueError("Time series y values must be numeric")
+        if not numeric_y.map(lambda value: value == value and value not in (float("inf"), float("-inf"))).all():
+            raise ValueError("Time series y values must be finite")
+        if df["ds"].nunique() < 2:
+            raise ValueError("Time series requires at least two unique ds values")
+        if (numeric_y == 0).all():
+            raise ValueError("Time series cannot be all zero")
+
+    def _validate_forecast_dataframe(self, forecast):
+        required_columns = {"ds", "yhat", "yhat_lower", "yhat_upper"}
+        missing_columns = required_columns - set(forecast.columns)
+        if missing_columns:
+            raise ValueError(f"Missing forecast columns: {sorted(missing_columns)}")
+        if forecast[list(required_columns)].isna().any().any():
+            raise ValueError("Forecast contains missing values")
+        if not (
+            (forecast["yhat_lower"] <= forecast["yhat"])
+            & (forecast["yhat"] <= forecast["yhat_upper"])
+        ).all():
+            raise ValueError("Forecast bounds must satisfy yhat_lower <= yhat <= yhat_upper")
 
     def _build_next_action(
         self,
