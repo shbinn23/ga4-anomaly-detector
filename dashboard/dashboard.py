@@ -1,9 +1,5 @@
 import streamlit as st
 import pandas as pd
-import json
-from pathlib import Path
-
-BASE_DIR = Path(__file__).resolve().parent.parent
 
 from utils.data_loader import (
     compute_change_rate,
@@ -12,6 +8,7 @@ from utils.data_loader import (
     filter_property_results,
     get_trending,
     load_anomaly_data,
+    load_channel_analysis_data,
     load_generic_analysis_data,
 )
 from components.charts import render_sparkline, render_anomaly_chart
@@ -285,8 +282,7 @@ def view_channel_detail(all_data, prop_id):
 
     # ── 2. 데이터 로드 (AI 분석 결과) ──────────────────────────────────
     try:
-        with open(BASE_DIR / 'data' / 'channel_anomaly_db.json', 'r') as f:
-            db = json.load(f)
+        db = load_channel_analysis_data()
 
         # 현재 선택된 프로퍼티의 채널 분석 데이터 추출
         prop_analysis = db.get(prop_id, {})

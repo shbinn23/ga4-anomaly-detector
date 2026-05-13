@@ -4,6 +4,38 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 DB_FILE = BASE_DIR / "data" / "results_db.json"
 GENERIC_DB_FILE = BASE_DIR / "data" / "generic_analysis_db.json"
+CHANNEL_DB_FILE = BASE_DIR / "data" / "channel_anomaly_db.json"
+
+
+def calculate_point_anomalies(forecast_data: dict) -> list:
+    return [
+        actual < lower or actual > upper
+        for actual, lower, upper in zip(
+            forecast_data.get("y", []),
+            forecast_data.get("yhat_lower", []),
+            forecast_data.get("yhat_upper", []),
+        )
+    ]
+
+
+def ensure_forecast_data_contract(result: dict) -> dict:
+    if not isinstance(result, dict):
+        return result
+
+    forecast_data = result.get("forecast_data")
+    if isinstance(forecast_data, dict) and "is_anomaly" not in forecast_data:
+        result = dict(result)
+        result["forecast_data"] = dict(forecast_data)
+        result["forecast_data"]["is_anomaly"] = calculate_point_anomalies(forecast_data)
+
+    return result
+
+
+def ensure_analysis_data_contract(data: dict) -> dict:
+    return {
+        key: ensure_forecast_data_contract(value)
+        for key, value in data.items()
+    }
 
 
 def load_anomaly_data() -> dict:
@@ -11,7 +43,7 @@ def load_anomaly_data() -> dict:
         return {}
     try:
         with open(DB_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
+            return ensure_analysis_data_contract(json.load(f))
     except Exception:
         return {}
 
@@ -21,7 +53,21 @@ def load_generic_analysis_data() -> dict:
         return {}
     try:
         with open(GENERIC_DB_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
+            return ensure_analysis_data_contract(json.load(f))
+    except Exception:
+        return {}
+
+
+def load_channel_analysis_data() -> dict:
+    if not CHANNEL_DB_FILE.exists():
+        return {}
+    try:
+        with open(CHANNEL_DB_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return {
+            property_id: ensure_analysis_data_contract(channels)
+            for property_id, channels in data.items()
+        }
     except Exception:
         return {}
 

@@ -1,7 +1,7 @@
 from typing import Any, Dict, Optional
 
 from ..domain.generic_schemas import GenericAnalysisRequest
-from ..domain.timeseries import AnalysisResult, AnalysisTask
+from ..domain.timeseries import AnalysisResult, AnalysisTask, calculate_point_anomalies
 from ..infrastructure.json_storage import JSONStorage
 from ..ml.base_detector import BaseDetector
 from .timeseries_normalizer import TimeSeriesNormalizer
@@ -39,7 +39,14 @@ class TimeSeriesAnalysisService:
         upper = float(forecast["yhat_upper"].iloc[-1])
 
         is_anomaly = self.detector.check_anomaly(actual=actual, lower=lower, upper=upper)
-        point_anomalies = [False] * (len(df) - 1) + [is_anomaly]
+        forecast_data = {
+            "ds": forecast["ds"].dt.strftime("%Y-%m-%d").tolist(),
+            "y": df["y"].tolist(),
+            "yhat": forecast["yhat"].round(2).tolist(),
+            "yhat_lower": forecast["yhat_lower"].round(2).tolist(),
+            "yhat_upper": forecast["yhat_upper"].round(2).tolist(),
+        }
+        forecast_data["is_anomaly"] = calculate_point_anomalies(forecast_data)
 
         return AnalysisResult(
             analysis_id=task.analysis_id,
@@ -54,14 +61,7 @@ class TimeSeriesAnalysisService:
             lower_bound=lower,
             upper_bound=upper,
             target_date=task.target_date or task.series[-1].date,
-            forecast_data={
-                "ds": forecast["ds"].dt.strftime("%Y-%m-%d").tolist(),
-                "y": df["y"].tolist(),
-                "yhat": forecast["yhat"].round(2).tolist(),
-                "yhat_lower": forecast["yhat_lower"].round(2).tolist(),
-                "yhat_upper": forecast["yhat_upper"].round(2).tolist(),
-                "is_anomaly": point_anomalies,
-            },
+            forecast_data=forecast_data,
         )
 
     def analyze(self, task: AnalysisTask) -> AnalysisResult:

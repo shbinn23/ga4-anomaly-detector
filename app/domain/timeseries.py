@@ -1,6 +1,17 @@
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+
+
+def calculate_point_anomalies(forecast_data: Dict[str, List[Any]]) -> List[bool]:
+    return [
+        actual < lower or actual > upper
+        for actual, lower, upper in zip(
+            forecast_data.get("y", []),
+            forecast_data.get("yhat_lower", []),
+            forecast_data.get("yhat_upper", []),
+        )
+    ]
 
 
 class TimeSeriesPoint(BaseModel):
@@ -46,6 +57,17 @@ class AnalysisResult(BaseModel):
     upper_bound: float
     target_date: str
     forecast_data: Dict[str, List[Any]]
+
+    @model_validator(mode="before")
+    @classmethod
+    def fill_missing_point_anomalies(cls, data):
+        if isinstance(data, dict):
+            forecast_data = data.get("forecast_data")
+            if isinstance(forecast_data, dict) and "is_anomaly" not in forecast_data:
+                data = dict(data)
+                data["forecast_data"] = dict(forecast_data)
+                data["forecast_data"]["is_anomaly"] = calculate_point_anomalies(forecast_data)
+        return data
 
 
 TimeSeriesTask = AnalysisTask

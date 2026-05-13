@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from typing import List, Optional, Dict, Any
 
 class DailySession(BaseModel):
@@ -18,6 +18,21 @@ class ForecastData(BaseModel):
     yhat_lower: List[float]
     yhat_upper: List[float]
     is_anomaly: List[bool]
+
+    @model_validator(mode="before")
+    @classmethod
+    def fill_missing_point_anomalies(cls, data):
+        if isinstance(data, dict) and "is_anomaly" not in data:
+            data = dict(data)
+            data["is_anomaly"] = [
+                actual < lower or actual > upper
+                for actual, lower, upper in zip(
+                    data.get("y", []),
+                    data.get("yhat_lower", []),
+                    data.get("yhat_upper", []),
+                )
+            ]
+        return data
 
 class BatchAnomalyRequest(BaseModel):
     """n8n에서 보내는 10개 단위 배치 요청을 수용합니다."""
